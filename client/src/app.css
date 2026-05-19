@@ -1,0 +1,319 @@
+
+:root {
+  --artist-bg: #ffffff;
+  --artist-panel: #ffffff;
+  --artist-surface: #f8fafc;
+  --artist-text: #0f172a;
+  --artist-muted: #64748b;
+  --artist-border: rgba(15, 23, 42, 0.12);
+  --artist-accent: #2563eb;
+  --artist-accent-strong: #1d4ed8;
+}
+
+.artist-app-root {
+  color: var(--artist-text);
+}
+
+.artist-app-root a {
+  color: var(--artist-accent-strong);
+}
+
+.artist-page-surface {
+  background: var(--artist-panel);
+  border: 1px solid var(--artist-border);
+  border-radius: 1rem;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  padding: 1.25rem;
+  overflow: visible;
+}
+
+.artist-theme-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--artist-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--artist-accent) 28%, transparent);
+  color: var(--artist-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.artist-app-root[data-shell-mode='true'] {
+  background: transparent;
+}
+
+.artist-app-root[data-shell-mode='true'] .artist-page-surface {
+  border-radius: 0.85rem;
+}
+
+.artist-app-root[data-theme='slate'] {
+  --artist-bg: #0f172a;
+  --artist-panel: #162033;
+  --artist-surface: #111827;
+  --artist-text: #e5eefb;
+  --artist-muted: #9fb0c7;
+  --artist-border: rgba(148, 163, 184, 0.22);
+  --artist-accent: #38bdf8;
+  --artist-accent-strong: #7dd3fc;
+}
+
+.artist-app-root[data-theme='light'] {
+  --artist-bg: #f8fafc;
+  --artist-panel: #ffffff;
+  --artist-surface: #ffffff;
+  --artist-text: #0f172a;
+  --artist-muted: #475569;
+  --artist-border: rgba(15, 23, 42, 0.14);
+  --artist-accent: #2563eb;
+  --artist-accent-strong: #1d4ed8;
+}
+
+.artist-app-root[data-theme='teal'] {
+  --artist-bg: #0f1f22;
+  --artist-panel: #123036;
+  --artist-surface: #0d262b;
+  --artist-text: #e6fffb;
+  --artist-muted: #9dd4cf;
+  --artist-border: rgba(45, 212, 191, 0.2);
+  --artist-accent: #14b8a6;
+  --artist-accent-strong: #5eead4;
+}
+
+.artist-app-root[data-theme='rose-dark'] {
+  --artist-bg: #260f1f;
+  --artist-panel: #3a1730;
+  --artist-surface: #311329;
+  --artist-text: #ffe5f1;
+  --artist-muted: #f6b7d0;
+  --artist-border: rgba(244, 114, 182, 0.26);
+  --artist-accent: #f472b6;
+  --artist-accent-strong: #f9a8d4;
+}
+
+.artist-app-root[data-theme='pastel-light'] {
+  --artist-bg: #fffafc;
+  --artist-panel: #ffffff;
+  --artist-surface: #ffffff;
+  --artist-text: #4a3340;
+  --artist-muted: #7b6471;
+  --artist-border: rgba(236, 72, 153, 0.14);
+  --artist-accent: #f9a8d4;
+  --artist-accent-strong: #c084fc;
+}
+
+.artist-app-root[data-theme='rainbow-accent'] {
+  --artist-bg: #10111a;
+  --artist-panel: #17192a;
+  --artist-surface: #131523;
+  --artist-text: #edf2ff;
+  --artist-muted: #b9c3e6;
+  --artist-border: rgba(148, 163, 184, 0.2);
+  --artist-accent: #8b5cf6;
+  --artist-accent-strong: #ec4899;
+}
+
+
+.artist-app-root {
+  min-height: 100vh;
+  background: var(--artist-bg);
+}
+
+.artist-shell-module-host {
+  width: 100%;
+}
+
+.artist-app-root.artist-shell-embedded {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.artist-app-root[data-shell-mode='true'] .artist-page-surface {
+  border-radius: 0.85rem;
+}
+
+.artist-app-root[data-shell-embedded='true'] {
+  min-height: auto;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin: 0 !important;
+}
+
+.artist-app-root[data-shell-embedded='true'] .artist-page-surface {
+  border-radius: 0;
+  box-shadow: none;
+  border-left: 0;
+  border-right: 0;
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.artist-app-root[data-shell-embedded='true'] .artist-shell-meta-row {
+  margin-bottom: 1rem;
+}
+
+.artist-app-root[data-shell-embedded='true'] .artist-table-wrap {
+  margin-bottom: 0;
+}
+
+.artist-app-root[data-shell-embedded='true'] .d-flex.justify-content-between.align-items-center.mt-3.gap-2.flex-wrap {
+  margin-bottom: 0;
+}
+
+.artist-table-wrap {
+  background: color-mix(in srgb, var(--artist-surface) 88%, transparent);
+}
+
+.artist-form-modal {
+  z-index: 1060;
+}
+
+.artist-form-modal-dialog {
+  margin: 1rem auto;
+}
+
+.artist-form-modal-content {
+  max-height: calc(100vh - 2rem);
+}
+
+.artist-form-modal .modal-body {
+  overflow-y: auto;
+  max-height: calc(100vh - 12rem);
+}
+
+
+.artist-app-root[data-shell-embedded='true'] .offcanvas-body {
+  padding-bottom: 0.5rem;
+}
+
+/* ART Sprint 6 - relatie-inzicht, gewicht en favorieten */
+.artist-toolbar {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(12rem, 18rem) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.artist-toolbar-search {
+  min-width: 0;
+}
+
+.artist-toolbar-favorite {
+  white-space: nowrap;
+}
+
+.artist-favorite-button {
+  min-width: 2.25rem;
+}
+
+.artist-selected-row > td {
+  background: color-mix(in srgb, var(--artist-accent) 12%, transparent) !important;
+}
+
+.artist-relation-panel {
+  border: 1px solid var(--artist-border);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--artist-surface) 94%, transparent);
+  padding: 1rem;
+}
+
+.artist-relation-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.artist-relation-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.45fr) minmax(14rem, 0.8fr) minmax(14rem, 0.8fr);
+  gap: 0.85rem;
+}
+
+.artist-relation-card {
+  border: 1px solid var(--artist-border);
+  border-radius: 0.75rem;
+  background: var(--artist-panel);
+  padding: 0.85rem;
+  min-width: 0;
+}
+
+.artist-relation-table-scroll {
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.artist-relation-card table {
+  font-size: 0.84rem;
+}
+
+.artist-relation-card td,
+.artist-relation-card th {
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .artist-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .artist-relation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .artist-relation-header {
+    flex-direction: column;
+  }
+}
+
+/* ART Sprint 6 Fix - unieke titels, navigatie en edit-relatiepanelen */
+.artist-relation-panel:focus {
+  outline: 3px solid color-mix(in srgb, var(--artist-accent) 35%, transparent);
+  outline-offset: 3px;
+}
+
+.artist-relation-panel-loaded {
+  animation: artistRelationPulse 900ms ease-out 1;
+}
+
+@keyframes artistRelationPulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--artist-accent) 30%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 12px color-mix(in srgb, var(--artist-accent) 0%, transparent);
+  }
+}
+
+.artist-selected-row:focus > td {
+  outline: 2px solid color-mix(in srgb, var(--artist-accent) 35%, transparent);
+  outline-offset: -2px;
+}
+
+.artist-edit-relation-panel {
+  padding: 0.85rem;
+  background: color-mix(in srgb, var(--artist-surface) 88%, transparent);
+}
+
+.artist-relation-grid-compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.artist-relation-grid-compact .artist-relation-table-scroll {
+  max-height: 12rem;
+}
+
+.artist-relation-grid-compact .artist-relation-card {
+  padding: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .artist-relation-grid-compact {
+    grid-template-columns: 1fr;
+  }
+}

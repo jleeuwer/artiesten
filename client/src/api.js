@@ -17,8 +17,19 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  listArtists: ({ search = "", limit = 25, offset = 0, includeDeleted = false, onlyDeleted = false } = {}) =>
-    request(`/api/artists?search=${encodeURIComponent(search)}&limit=${limit}&offset=${offset}&includeDeleted=${includeDeleted}&onlyDeleted=${onlyDeleted}`),
+  listArtists: ({
+    search = "",
+    limit = 25,
+    offset = 0,
+    includeDeleted = false,
+    onlyDeleted = false,
+    favoriteOnly = false,
+    sort = "favorite_first",
+  } = {}) =>
+    request(`/api/artists?search=${encodeURIComponent(search)}&limit=${limit}&offset=${offset}&includeDeleted=${includeDeleted}&onlyDeleted=${onlyDeleted}&favoriteOnly=${favoriteOnly}&sort=${encodeURIComponent(sort)}`),
+
+  getArtistRelations: (id) => request(`/api/artists/${id}/relations`),
+  setArtistFavorite: (id, favorite) => request(`/api/artists/${id}/favorite`, { method: "PATCH", body: JSON.stringify({ favorite }) }),
 
   createArtist: (artist) => request(`/api/artists`, { method: "POST", body: JSON.stringify(artist) }),
   updateArtist: (id, artist) => request(`/api/artists/${id}`, { method: "PUT", body: JSON.stringify(artist) }),

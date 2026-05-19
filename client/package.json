@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --outDir ../public/app",
-    "preview": "vite preview"
+    "build": "vite build --outDir ../public/app --emptyOutDir",
+    "preview": "vite preview",
+    "test:shell": "node --test ../tests/shellIntegration.test.mjs",
+    "test:theme-contract": "node --test ../tests/themeContract.test.mjs",
+    "test:embedded-shell": "node --test ../tests/embeddedShellMode.test.mjs"
   },
   "dependencies": {
     "bootstrap": "^5.3.3",
