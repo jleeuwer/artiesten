@@ -247,3 +247,4 @@ Na dependency-installatie kan de volledige set worden gedraaid:
 npm run install:all
 npm run test:all
 ```
+# artiesten
