@@ -352,3 +352,34 @@ npm run scan:duplicates
 ```
 
 Verwacht: geen `argument list too long` fout meer bij grotere candidate batches.
+
+## ART-015D-2A-Fix-2 — first_seen_at / last_seen_at fout
+
+### Bevinding
+
+Bij een echte scanner-run kon PostgreSQL deze fout geven:
+
+```text
+null value in column "first_seen_at" of relation "artist_duplicate_candidates" violates not-null constraint
+```
+
+### Oorzaak
+
+De ART-015D-2A migratie maakt `first_seen_at` en `last_seen_at` verplicht, maar de scanner-insert vulde deze velden niet voor nieuwe candidates.
+
+### Oplossing
+
+De scanner vult bij nieuwe candidates nu expliciet:
+
+- `first_seen_at`
+- `last_seen_at`
+- `first_seen_scan_run_id`
+- `last_seen_scan_run_id`
+- `times_seen`
+
+### Test
+
+```bash
+npm run test:art015d2a:fix2
+npm run scan:duplicates
+```

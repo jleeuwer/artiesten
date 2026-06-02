@@ -527,3 +527,7 @@ De duplicate scanner voert gegenereerde SQL via `psql` stdin uit. Hierdoor kan `
 npm run test:art015d2a:fix1
 npm run scan:duplicates
 ```
+
+### ART-015D-2A-Fix-2 scanner timestamp fix
+
+Als `npm run scan:duplicates` faalt op `artist_duplicate_candidates.first_seen_at`, gebruik dan de release met ART-015D-2A-Fix-2. Deze vult `first_seen_at` en `last_seen_at` expliciet bij nieuwe duplicate candidates. Er is geen extra SQL-migratie nodig.

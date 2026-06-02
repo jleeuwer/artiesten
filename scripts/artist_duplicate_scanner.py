@@ -442,6 +442,7 @@ def persist_candidates(db: PsqlDocker, scan_run_id: int, candidates: list[Candid
         logger.warn("artist_duplicate_scan.skip_unknown_status", pair_key=cand.pair_key, status=status)
 
     if inserts:
+        # ART-015D-2A-Fix-2: fill first_seen_at and last_seen_at explicitly for new candidates.
         values = []
         for cand in inserts:
             low, high = cand.pair_key
@@ -459,6 +460,8 @@ def persist_candidates(db: PsqlDocker, scan_run_id: int, candidates: list[Candid
                     f"{sql_quote(cand.reason)}::text",
                     json_sql(cand.details),
                     "'new'::text",
+                    "now()::timestamptz",
+                    "now()::timestamptz",
                     f"{scan_run_id}::bigint",
                     f"{scan_run_id}::bigint",
                     "1::integer",
@@ -468,7 +471,8 @@ def persist_candidates(db: PsqlDocker, scan_run_id: int, candidates: list[Candid
           insert into public.artist_duplicate_candidates
             (scan_run_id, artist_key_a, artist_name_a, artist_key_b, artist_name_b,
              artist_key_low, artist_key_high, match_score, match_method, match_reason,
-             match_details, status, first_seen_scan_run_id, last_seen_scan_run_id, times_seen)
+             match_details, status, first_seen_at, last_seen_at,
+             first_seen_scan_run_id, last_seen_scan_run_id, times_seen)
           values
             {', '.join(values)}
           on conflict on constraint artist_duplicate_candidates_pair_chk do nothing;

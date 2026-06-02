@@ -34,13 +34,14 @@
     "test:art015c3:fix2": "node --test tests/art015c3Fix2MergeLogging.contract.test.mjs",
     "test:art015c3:fix3": "node --test tests/art015c3Fix3MergeHistoryKeys.contract.test.mjs",
     "test:art015c3:fix4": "node --test tests/art015c3Fix4MergeHistoryTableReadability.contract.test.mjs",
-    "test:art015d": "node --test tests/art015dDocumentation.contract.test.mjs tests/art015d1Implementation.contract.test.mjs tests/art015d2aRerunHandling.contract.test.mjs tests/art015d2aFix1PsqlStdin.contract.test.mjs",
+    "test:art015d": "node --test tests/art015dDocumentation.contract.test.mjs tests/art015d1Implementation.contract.test.mjs tests/art015d2aRerunHandling.contract.test.mjs tests/art015d2aFix1PsqlStdin.contract.test.mjs tests/art015d2aFix2CandidateTimestamps.contract.test.mjs",
     "db:migrate:art015d1": "bash scripts/db-migrate-art015d1-docker.sh",
     "scan:duplicates": "bash scripts/run-artist-duplicate-scanner.sh",
     "test:art015d1": "node --test tests/art015d1Implementation.contract.test.mjs",
     "db:migrate:art015d2a": "bash scripts/db-migrate-art015d2a-docker.sh",
     "test:art015d2a": "node --test tests/art015d2aRerunHandling.contract.test.mjs",
-    "test:art015d2a:fix1": "node --test tests/art015d2aFix1PsqlStdin.contract.test.mjs"
+    "test:art015d2a:fix1": "node --test tests/art015d2aFix1PsqlStdin.contract.test.mjs",
+    "test:art015d2a:fix2": "node --test tests/art015d2aFix2CandidateTimestamps.contract.test.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

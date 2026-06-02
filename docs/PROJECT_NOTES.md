@@ -435,3 +435,7 @@ De reviewqueue is nog niet gebouwd; ART-015D-2B moet deze stagingdata in de Arti
 ## ART-015D-2A-Fix-1 — Scanner psql stdin hardening
 
 Tijdens lokaal testen faalde `npm run scan:duplicates` met `exec /usr/bin/psql: argument list too long`. De oorzaak was dat de Python scanner grote gegenereerde SQL-batches via `psql -c` als command argument meegaf. De scanner gebruikt nu `subprocess.run(..., input=sql)` en voert SQL via stdin aan `psql`, zodat grote candidate batches niet meer tegen de OS argument-length limiet aanlopen.
+
+## ART-015D-2A-Fix-2 — Candidate timestamps bij scanner inserts
+
+Tijdens een echte `npm run scan:duplicates` run bleek dat nieuwe records in `artist_duplicate_candidates` faalden op de NOT NULL constraint van `first_seen_at`. De scanner vult nu bij nieuwe candidates expliciet `first_seen_at`, `last_seen_at`, `first_seen_scan_run_id`, `last_seen_scan_run_id` en `times_seen`. Hiermee sluit de scanner aan op de ART-015D-2A rerun-hardening migratie.

@@ -630,3 +630,9 @@ Vervolg: ART-015D-2B reviewqueue in de Artiesten-app.
 - `npm run scan:duplicates` faalde bij grote batches met `argument list too long`.
 - Scanner voert SQL nu via `psql` stdin uit in plaats van via `psql -c <large sql>`.
 - Contracttest toegevoegd: `npm run test:art015d2a:fix1`.
+
+### ART-015D-2A-Fix-2 — Candidate timestamps bij scanner inserts — DONE
+
+- Scanner vult nieuwe candidate timestamps expliciet.
+- Lost PostgreSQL NOT NULL fout op `artist_duplicate_candidates.first_seen_at` op.
+- Geen nieuwe SQL-migratie nodig.
