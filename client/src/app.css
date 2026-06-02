@@ -193,7 +193,7 @@
 /* ART Sprint 6 - relatie-inzicht, gewicht en favorieten */
 .artist-toolbar {
   display: grid;
-  grid-template-columns: minmax(16rem, 1fr) minmax(12rem, 18rem) auto auto;
+  grid-template-columns: minmax(16rem, 1fr) minmax(12rem, 18rem) minmax(14rem, 18rem) auto auto;
   gap: 0.75rem;
   align-items: center;
 }
@@ -231,7 +231,7 @@
 
 .artist-relation-grid {
   display: grid;
-  grid-template-columns: minmax(18rem, 1.45fr) minmax(14rem, 0.8fr) minmax(14rem, 0.8fr);
+  grid-template-columns: minmax(18rem, 1.35fr) minmax(14rem, 0.75fr) minmax(14rem, 0.75fr) minmax(16rem, 0.95fr);
   gap: 0.85rem;
 }
 
@@ -316,4 +316,103 @@
   .artist-relation-grid-compact {
     grid-template-columns: 1fr;
   }
+}
+
+.artist-duplicate-panel {
+  border: 1px solid var(--artist-border);
+  background: color-mix(in srgb, var(--artist-accent) 5%, var(--artist-panel));
+  border-radius: 0.85rem;
+  padding: 1rem;
+}
+
+.artist-impact-offcanvas .offcanvas-body {
+  background: var(--artist-panel);
+  color: var(--artist-text);
+}
+
+/* ART-015C-2-Fix-1: Bootstrap Icons-compatible favorite star fallback.
+   The favorite button keeps Bootstrap Icons class names, while the glyph is
+   rendered from CSS so the release ZIP does not need to ship icon font files. */
+.artist-favorite-button .bi {
+  display: inline-block;
+  width: 1em;
+  line-height: 1;
+  text-align: center;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.artist-favorite-button .bi-star::before {
+  content: "☆";
+}
+
+.artist-favorite-button .bi-star-fill::before {
+  content: "★";
+}
+
+/* ART-015C-3: mergehistorie en samengevoegde artiesten */
+.artist-merged-row > td {
+  background: color-mix(in srgb, #ffc107 9%, transparent) !important;
+}
+
+.artist-merged-alert {
+  border-style: dashed;
+}
+
+.artist-merge-history-card {
+  background: color-mix(in srgb, var(--artist-panel) 92%, #ffc107 8%);
+}
+
+
+
+/* ART-015C-3-Fix-4: merge history table readability.
+   The horizontal scrollbar receives room below the table and long impact
+   details wrap as chips instead of pushing the row into an unreadable line. */
+.artist-merge-history-table-wrap {
+  padding-bottom: 1.25rem;
+  scrollbar-gutter: stable both-edges;
+}
+
+.artist-merge-history-table {
+  min-width: 42rem;
+}
+
+.artist-merge-history-table td,
+.artist-merge-history-table th {
+  white-space: normal;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.artist-merge-history-impact-cell {
+  min-width: 13rem;
+}
+
+.artist-merge-history-impact-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.artist-merge-history-impact-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--artist-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--artist-surface) 86%, transparent);
+  color: var(--artist-text);
+  line-height: 1.35;
+}
+
+.artist-merge-history-impact-chip strong {
+  font-weight: 700;
+}
+
+.artist-toolbar-merge-status {
+  min-width: 14rem;
 }

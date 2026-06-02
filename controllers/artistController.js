@@ -26,12 +26,13 @@ async function list(req, res) {
   const limit = Math.min(Number(req.query.limit ?? 50), 200);
   const offset = Math.max(Number(req.query.offset ?? 0), 0);
   const sort = (req.query.sort ?? "favorite_first").toString();
+  const mergeStatus = (req.query.mergeStatus ?? "active").toString();
 
   const includeDeleted = parseBoolean(req.query.includeDeleted);
   const onlyDeleted = parseBoolean(req.query.onlyDeleted);
   const favoriteOnly = parseBoolean(req.query.favoriteOnly);
 
-  const data = await Artist.list({ search, limit, offset, includeDeleted, onlyDeleted, favoriteOnly, sort });
+  const data = await Artist.list({ search, limit, offset, includeDeleted, onlyDeleted, favoriteOnly, sort, mergeStatus });
   res.json(data);
 }
 
@@ -53,6 +54,87 @@ async function getRelations(req, res) {
   if (!relations) return res.status(404).json({ error: "Not found" });
 
   res.json(relations);
+}
+
+async function getMergeHistory(req, res) {
+  const artistKey = req.query.artistKey !== undefined ? Number(req.query.artistKey) : null;
+  if (artistKey !== null && !Number.isFinite(artistKey)) return res.status(400).json({ error: "Invalid artistKey" });
+
+  const limit = Math.min(Math.max(Number(req.query.limit ?? 100), 1), 200);
+  const offset = Math.max(Number(req.query.offset ?? 0), 0);
+  const data = await Artist.getMergeHistory({ artistKey, limit, offset });
+  res.json(data);
+}
+
+
+async function findDuplicateCandidates(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  const limit = Math.min(Math.max(Number(req.query.limit ?? 20), 1), 50);
+  const minScore = Math.min(Math.max(Number(req.query.minScore ?? 0.72), 0.1), 1);
+  const data = await Artist.findDuplicateCandidates(id, { limit, minScore });
+  if (!data) return res.status(404).json({ error: "Not found" });
+
+  res.json(data);
+}
+
+async function getMergeImpact(req, res) {
+  const redundantArtistKey = Number(req.query.redundantArtistKey ?? req.query.redundant);
+  const replacementArtistKey = Number(req.query.replacementArtistKey ?? req.query.replacement);
+
+  if (!Number.isFinite(redundantArtistKey) || !Number.isFinite(replacementArtistKey)) {
+    return res.status(400).json({ error: "Both redundantArtistKey and replacementArtistKey are required" });
+  }
+  if (redundantArtistKey === replacementArtistKey) {
+    return res.status(400).json({ error: "Redundant and replacement artist must be different" });
+  }
+
+  try {
+    const data = await Artist.getMergeImpact({ redundantArtistKey, replacementArtistKey });
+    if (!data) return res.status(404).json({ error: "One or both artists were not found" });
+
+    res.json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    throw err;
+  }
+}
+
+async function executeMerge(req, res) {
+  const redundantArtistKey = Number(req.body?.redundantArtistKey ?? req.body?.redundant);
+  const replacementArtistKey = Number(req.body?.replacementArtistKey ?? req.body?.replacement);
+
+  if (!Number.isFinite(redundantArtistKey) || !Number.isFinite(replacementArtistKey)) {
+    return res.status(400).json({ error: "Both redundantArtistKey and replacementArtistKey are required" });
+  }
+  if (redundantArtistKey === replacementArtistKey) {
+    return res.status(400).json({ error: "Redundant and replacement artist must be different" });
+  }
+
+  try {
+    const result = await Artist.executeArtistMerge({
+      redundantArtistKey,
+      replacementArtistKey,
+      reason: req.body?.reason,
+      performedBy: req.body?.performedBy || req.user?.username || "artist-app",
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    if (err.safeMessage || err.mergeStep) {
+      return res.status(statusCode).json({
+        error: err.safeMessage || "Merge is niet uitgevoerd; de transactie is teruggedraaid.",
+        detail: statusCode >= 500 ? "Zie serverlog voor technische details." : err.message,
+        mergeStep: err.mergeStep || null,
+        transaction: "rolled_back",
+      });
+    }
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    throw err;
+  }
 }
 
 async function create(req, res) {
@@ -145,6 +227,10 @@ module.exports = {
   list,
   get,
   getRelations,
+  getMergeHistory,
+  findDuplicateCandidates,
+  getMergeImpact,
+  executeMerge,
   create,
   update,
   setFavorite,

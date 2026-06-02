@@ -25,10 +25,19 @@ export const api = {
     onlyDeleted = false,
     favoriteOnly = false,
     sort = "favorite_first",
+    mergeStatus = "active",
   } = {}) =>
-    request(`/api/artists?search=${encodeURIComponent(search)}&limit=${limit}&offset=${offset}&includeDeleted=${includeDeleted}&onlyDeleted=${onlyDeleted}&favoriteOnly=${favoriteOnly}&sort=${encodeURIComponent(sort)}`),
+    request(`/api/artists?search=${encodeURIComponent(search)}&limit=${limit}&offset=${offset}&includeDeleted=${includeDeleted}&onlyDeleted=${onlyDeleted}&favoriteOnly=${favoriteOnly}&sort=${encodeURIComponent(sort)}&mergeStatus=${encodeURIComponent(mergeStatus)}`),
 
+  getArtist: (id) => request(`/api/artists/${id}`),
   getArtistRelations: (id) => request(`/api/artists/${id}/relations`),
+  getMergeHistory: ({ artistKey = "", limit = 100, offset = 0 } = {}) => request(`/api/artists/merge/history?artistKey=${encodeURIComponent(artistKey ?? "")}&limit=${limit}&offset=${offset}`),
+  findDuplicateCandidates: (id, { limit = 20, minScore = 0.72 } = {}) => request(`/api/artists/${id}/duplicate-candidates?limit=${limit}&minScore=${minScore}`),
+  getMergeImpact: ({ redundantArtistKey, replacementArtistKey }) => request(`/api/artists/merge/impact?redundantArtistKey=${redundantArtistKey}&replacementArtistKey=${replacementArtistKey}`),
+  executeArtistMerge: ({ redundantArtistKey, replacementArtistKey, reason }) => request(`/api/artists/merge/execute`, {
+    method: "POST",
+    body: JSON.stringify({ redundantArtistKey, replacementArtistKey, reason })
+  }),
   setArtistFavorite: (id, favorite) => request(`/api/artists/${id}/favorite`, { method: "PATCH", body: JSON.stringify({ favorite }) }),
 
   createArtist: (artist) => request(`/api/artists`, { method: "POST", body: JSON.stringify(artist) }),

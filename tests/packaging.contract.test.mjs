@@ -9,20 +9,22 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), 'utf8');
 }
 
-test('env sample files are present and document required runtime variables', () => {
-  for (const file of ['.sample.env', '.env.example']) {
-    assert.ok(fs.existsSync(path.join(root, file)), `${file} should exist`);
-    const content = read(file);
-    assert.match(content, /PORT=3012/);
-    assert.match(content, /DATABASE_URL=/);
-    assert.match(content, /CORS_ORIGIN=/);
-    assert.match(content, /VITE_ARTIST_APP_ENABLE_SHELL_MODE=/);
-    assert.match(content, /VITE_ARTIST_APP_ALLOW_THEME_QUERY=/);
-    assert.match(content, /VITE_ARTIST_APP_DEFAULT_THEME=/);
-    assert.match(content, /ARTIST_DB_CONTAINER=my-postgresdb/);
-    assert.match(content, /ARTIST_DB_USER=postgres/);
-    assert.match(content, /ARTIST_DB_NAME=musicdb/);
-  }
+test('env example file is present and documents required runtime variables', () => {
+  assert.ok(fs.existsSync(path.join(root, '.env.example')), '.env.example should exist');
+  assert.ok(!fs.existsSync(path.join(root, '.sample.env')), '.sample.env should not be used anymore');
+  assert.ok(!fs.existsSync(path.join(root, '.env.sample')), '.env.sample should not be used anymore');
+
+  const content = read('.env.example');
+  assert.ok(content.trim().length > 0, '.env.example should not be empty');
+  assert.match(content, /PORT=3012/);
+  assert.match(content, /DATABASE_URL=/);
+  assert.match(content, /CORS_ORIGIN=/);
+  assert.match(content, /VITE_ARTIST_APP_ENABLE_SHELL_MODE=/);
+  assert.match(content, /VITE_ARTIST_APP_ALLOW_THEME_QUERY=/);
+  assert.match(content, /VITE_ARTIST_APP_DEFAULT_THEME=/);
+  assert.match(content, /ARTIST_DB_CONTAINER=my-postgresdb/);
+  assert.match(content, /ARTIST_DB_USER=postgres/);
+  assert.match(content, /ARTIST_DB_NAME=musicdb/);
 });
 
 test('gitignore protects local config, logs, dependencies and release noise', () => {
@@ -34,7 +36,7 @@ test('gitignore protects local config, logs, dependencies and release noise', ()
 
 test('release packaging script excludes local-only artifacts', () => {
   const script = read('scripts/make-release-zip.sh');
-  for (const excluded of ['node_modules/*', 'client/node_modules/*', '.git/*', '.env', 'logs/*', 'config/config.js', '.DS_Store', '__MACOSX/*']) {
+  for (const excluded of ['node_modules/*', 'client/node_modules/*', '.git/*', '.env', '.sample.env', '.env.sample', 'logs/*', 'config/config.js', '.DS_Store', '__MACOSX/*', '*.woff', '*.woff2', '*.ttf', '*.otf']) {
     assert.ok(script.includes(excluded), `release script should exclude ${excluded}`);
   }
 });
@@ -63,4 +65,14 @@ test('documentation contains backlog and project notes', () => {
   assert.match(read('Readme.md'), /Release-ZIP maken/);
   assert.match(read('docs/BACKLOG.md'), /ART-001/);
   assert.match(read('docs/PROJECT_NOTES.md'), /Shellstarter embedded contract/);
+});
+
+
+test('env cleanup script removes legacy env templates', () => {
+  assert.ok(fs.existsSync(path.join(root, 'scripts/env-cleanup-legacy.sh')), 'scripts/env-cleanup-legacy.sh should exist');
+  const script = read('scripts/env-cleanup-legacy.sh');
+  assert.match(script, /rm -f \.sample\.env \.env\.sample/);
+  const packageJson = JSON.parse(read('package.json'));
+  assert.equal(packageJson.scripts['env:cleanup-legacy'], 'bash scripts/env-cleanup-legacy.sh');
+  assert.match(read('Readme.md'), /npm run env:cleanup-legacy/);
 });

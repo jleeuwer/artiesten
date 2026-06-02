@@ -6,11 +6,15 @@ const logsDir = path.join(process.cwd(), "logs");
 if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 
 const logger = winston.createLogger({
-  level: process.env.NODE_ENV === "production" ? "info" : "debug",
+  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === "production" ? "info" : "debug"),
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.printf(
-      (info) => `${info.timestamp} [${info.level.toUpperCase()}] ${info.message}`
+      (info) => {
+        const { timestamp, level, message, ...meta } = info;
+        const metaText = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
+        return `${timestamp} [${level.toUpperCase()}] ${message}${metaText}`;
+      }
     )
   ),
   transports: [

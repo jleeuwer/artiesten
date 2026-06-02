@@ -62,3 +62,15 @@ Deze fix verwerkt twee testbevindingen:
 - Na selectie van een artiest scrollt/focust de UI naar het relatiepaneel onderaan.
 - Het relatiepaneel heeft een knop `Terug naar artiestenlijst`.
 - Het edit-scherm bevat compacte read-only infopanelen met dezelfde relatie-informatie. Deze panelen zijn informatief; bewerken gebeurt via de betreffende app in Shellstarter.
+
+## Sprint 6 Fix — env-template standaardisatie — 2026-05-19
+
+Deze fix vereenvoudigt de env-template aanpak:
+
+- `.env.example` is de enige officiële voorbeeldconfiguratie.
+- `.sample.env` en `.env.sample` worden niet meer gebruikt of meegeleverd.
+- `tests/packaging.contract.test.mjs` controleert nu alleen `.env.example` als verplichte template.
+- De packaging-test controleert ook dat `.sample.env` en `.env.sample` niet aanwezig zijn.
+- `scripts/make-release-zip.sh` faalt als `.env.example` ontbreekt of leeg is.
+- Het release-script sluit `.sample.env` en `.env.sample` expliciet uit om terugval naar oude template-namen te voorkomen.
+- README/runbook gebruiken uitsluitend: `cp .env.example .env`.

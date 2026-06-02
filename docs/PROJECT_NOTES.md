@@ -1,6 +1,6 @@
 # Artiesten-app Project Notes
 
-Laatste bijgewerkt: 2026-05-18
+Laatste bijgewerkt: 2026-05-19
 
 ## Doel
 
@@ -41,8 +41,9 @@ DATABASE_URL=postgresql://postgres:postgres@postgres:5432/musicdb
 ## Env-bestanden
 
 - `.env` is lokaal en mag niet in release-ZIP's.
-- `.sample.env` en `.env.example` zijn veilige voorbeeldbestanden en moeten wel meegeleverd worden.
-- Nieuwe env-variabelen moeten altijd in beide voorbeeldbestanden en in de README worden gedocumenteerd.
+- `.env.example` is de enige officiële veilige voorbeeldconfiguratie en moet worden meegeleverd.
+- `.sample.env` en `.env.sample` worden niet meer gebruikt.
+- Nieuwe env-variabelen moeten altijd in `.env.example` en in de README worden gedocumenteerd.
 
 ## Shellstarter embedded contract
 
@@ -98,7 +99,6 @@ Release-ZIP's bevatten:
 - tests;
 - scripts;
 - documentatie;
-- `.sample.env`;
 - `.env.example`;
 - eventueel actuele `public/app` build-output.
 
@@ -229,8 +229,8 @@ Favorieten worden voorlopig algemeen opgeslagen op `artist.ar_is_favorite`. Als 
 
 ## 2026-05-19 — Sprint 6 testfix: env samples en Docker migratie
 
-- Bevinding opgelost waarbij `tests/packaging.contract.test.mjs` faalde omdat `.sample.env` leeg was.
-- `.sample.env` en `.env.example` bevatten nu dezelfde veilige voorbeeldconfiguratie, inclusief `PORT=3012`, `DATABASE_URL`, CORS, Shellstarter/Vite variabelen en Docker migratiehulpvariabelen.
+- Bevinding opgelost waarbij `tests/packaging.contract.test.mjs` faalde door inconsistente env-template bestanden.
+- `.env.example` bevat nu de enige officiële veilige voorbeeldconfiguratie, inclusief `PORT=3012`, `DATABASE_URL`, CORS, Shellstarter/Vite variabelen en Docker migratiehulpvariabelen.
 - Docker PostgreSQL is de primaire migratieroute voor Sprint 6. Het lokale `psql "$DATABASE_URL"` voorbeeld is vervangen door `npm run db:migrate:sprint6` en een expliciet `docker exec` voorbeeld.
 - Nieuw script: `scripts/db-migrate-sprint6-docker.sh`, met timestamped logging naar `logs/`.
 
@@ -241,3 +241,197 @@ Gebruikerstest heeft twee aanscherpingen opgeleverd:
 - Artiestgewicht telt voortaan unieke songtitels via `count(distinct lower(trim(fd_tag_title)))`, waarbij records met `fd_action = Delete` niet meetellen. Meerdere versies van dezelfde titel tellen dus één keer mee voor gewicht. Het totaal aantal niet-verwijderde `file_details` records blijft beschikbaar als `version_count`.
 - Na selectie van een artiest wordt de focus/scroll naar het relatiepaneel onderaan verplaatst. Het paneel krijgt een duidelijke header en de knop `Terug naar artiestenlijst`.
 - Het edit-scherm bevat nu compacte read-only infopanelen voor file details, artiestenspellingen en hitlijsten. Deze panelen zijn informatief; bewerken gebeurt via de betreffende app in Shellstarter.
+
+
+## Sprint 6 fix-release: env-template standaardisatie
+
+Besluit: de Artiesten-app gebruikt vanaf deze release alleen `.env.example` als officiële env-template.
+
+- `.sample.env` en `.env.sample` worden niet meer meegeleverd.
+- Tests controleren expliciet dat deze oude template-namen niet meer aanwezig zijn.
+- Lokale configuratie blijft `.env` en blijft uitgesloten van release-ZIP's.
+- Runbook-instructie is: `cp .env.example .env`.
+
+## 2026-05-25 — ART-015A ontwerp: artiesten ontdubbelen / samenvoegen
+
+ART-015A is uitgewerkt als functioneel en technisch ontwerp. De daadwerkelijke merge-code wordt nog niet gebouwd.
+
+Besluiten en uitgangspunten:
+
+- Fuzzy matching wordt wel meegenomen, geïnspireerd door de Tipparade loader-aanpak, maar uitsluitend als hulpmiddel om mogelijke dubbele artiesten te vinden.
+- Fuzzy matching mag nooit automatisch een merge uitvoeren.
+- De gebruiker blijft verantwoordelijk voor de definitieve keuze van redundante artiest en vervangende/canonical artiest.
+- De mergeflow blijft centraal en gelijk, ongeacht of een kandidaat uit de interactieve Artiesten-app komt of uit een periodieke onderhoudsscan.
+
+Twee varianten zijn ontworpen:
+
+1. **Periodieke onderhoudsfunctie met staging**
+   - Een Python scanner kan periodiek mogelijke dubbelen zoeken.
+   - Kandidaten worden opgeslagen in staging-/reviewtabellen.
+   - De Artiesten-app leest de kandidaten uit en laat de gebruiker acties nemen.
+
+2. **Geïntegreerde ondersteuning in de Artiesten-app**
+   - De gebruiker zoekt vanuit de app mogelijke dubbelen.
+   - Fuzzy kandidaten worden getoond met matchscore en matchreden.
+   - De gebruiker kan een impactscan openen.
+
+Architectuurregel:
+
+```text
+candidate discovery → impactscan → conflictcontrole → expliciet akkoord → transactie → audit/history
+```
+
+Advies voor vervolg:
+
+- Eerst ART-015B bouwen: interactieve duplicate search + read-only impactscan.
+- Daarna ART-015C: daadwerkelijke merge-uitvoering met transactie en audit.
+- Daarna ART-015D: periodieke Python onderhoudsscan met staging/reviewqueue.
+
+Albums, Discogs artist-data en muzikant/band-relaties blijven expliciet in beeld zodat het mergeontwerp later niet te smal blijkt.
+
+## 2026-05-25 — ART-015B implementatie: interactieve duplicate search en impactscan
+
+- ART-015B is uitgewerkt als read-only implementatiesprint voor artiesten ontdubbelen.
+- Fuzzy matching is geïmplementeerd als hulpmiddel voor kandidaatdetectie, niet als automatische merge.
+- De Artiesten-app toont mogelijke dubbele artiesten vanuit het relatiepaneel van de geselecteerde artiest.
+- De gebruiker kan twee impactrichtingen bekijken: geselecteerde artiest vervangen door kandidaat, of kandidaat vervangen door geselecteerde artiest.
+- Nieuwe API's:
+  - `GET /api/artists/:id/duplicate-candidates`
+  - `GET /api/artists/merge/impact`
+- De impactscan dekt nu minimaal `file_details.fd_artist_key` en `artiesten_spelling.as_artist_key`.
+- ART-015C blijft nodig voor daadwerkelijke merge-uitvoering met transactie en audit/history.
+- Geen nieuwe SQL-migratie nodig voor ART-015B.
+
+## 2026-05-25 — ART-015C ontwerpbesluiten
+
+- De artist merge wordt als één technische transactie ontworpen. Bij één fout volgt rollback en mogen er geen gedeeltelijke updates achterblijven.
+- De aangeleverde schema-analyse laat zien dat de FK-query-output niet volledig is voor functionele impact. Naast formele FK's zijn `hitlijsten.ar_artist_key`, `staging_hitlijsten.hl_artist_key`, `import_scan_items.fd_artist_key` en `file_details_version_group_validations.fd_artist_key` functioneel relevant.
+- ART-015C v1 neemt `file_details`, `artiesten_spelling`, `hitlijsten`, `staging_hitlijsten`, `import_scan_items`, invalidatie van `file_details_version_group_validations`, `artist_merge_history`, `admin_audit_log` en `alerts` mee.
+- `file_details.fd_correct_artist` moet na merge naar de replacement artist name worden gezet.
+- Redundante artists worden niet hard deleted maar gemarkeerd als merged/deleted met `ar_merged_into_artist_key`, `ar_merged_at` en `ar_merge_note`.
+- Shellstarter alerts worden in v1 via de bestaande `alerts` tabel voorbereid. Mail wordt later verder uitgewerkt.
+- FK-hardening wordt gefaseerd voorgesteld met orphan-checks en `NOT VALID` constraints.
+- Legacy env sample files worden via `npm run env:cleanup-legacy` opgeruimd. Alleen `.env.example` blijft officieel.
+
+---
+
+## ART-015C-1 implementatienotitie
+
+De artist merge is geïmplementeerd als één transactionele backend-service. De frontend toont alleen de impactscan, vraagt reden + expliciete bevestiging, en roept daarna `POST /api/artists/merge/execute` aan.
+
+Belangrijke ontwerpkeuze: de redundante artiest wordt niet hard deleted maar gemarkeerd met `ar_merged_into_artist_key`, `ar_merged_at` en `ar_merge_note`. Hierdoor blijft herleidbaar welke artiest is samengevoegd.
+
+Shellstarter-integratie blijft los gekoppeld via de bestaande `alerts` tabel. Mail wordt nog niet direct aangemaakt.
+
+## ART-015C-2 — UI hardening merge-richting
+
+Besluit: de merge-richtingbuttons in ART-015B/ART-015C worden hernoemd om duidelijker te maken welke artiest leidend/canonical wordt.
+
+- `Deze vervangen` is vervangen door **Maak kandidaat leidend**.
+- `Kandidaat vervangen` is vervangen door **Maak deze artiest leidend**.
+
+Functioneel blijft de merge hetzelfde. De nieuwe teksten leggen de nadruk op de artiest die blijft bestaan als canonical/vervangende artiest. De UI bevat daarnaast expliciete `title`- en `aria-label`-teksten.
+
+Favorieten blijven visueel ondersteund met Bootstrap Icons:
+
+- favoriet: `bi bi-star-fill`
+- niet favoriet: `bi bi-star`
+
+## ART-015C-2-Fix-1 — Favorieteniconen zichtbaar maken
+
+Testbevinding: de afgesproken iconen `bi bi-star-fill` en `bi bi-star` waren niet zichtbaar in de artiestenlijst.
+
+Oplossing:
+
+- De favorietenknop rendert nu expliciet `<i class="bi bi-star-fill" aria-hidden="true"></i>` voor favoriete artiesten.
+- De favorietenknop rendert nu expliciet `<i class="bi bi-star" aria-hidden="true"></i>` voor niet-favoriete artiesten.
+- De knop gebruikt `aria-label` en `title` met de teksten `Verwijder uit favorieten` en `Markeer als favoriet`.
+- `client/src/app.css` bevat een Bootstrap Icons-compatible fallback voor de star-glyphs, zodat de release geen icon-fontbestanden hoeft mee te leveren.
+- `public/app` is opnieuw opgebouwd zodat de productiebuild de actuele frontend bevat.
+
+## ART-015C-3 — Mergehistorie en samengevoegde artiesten
+
+Besluit: na het transactioneel uitvoeren van artist merges moet de gebruiker de gevolgen kunnen terugzien in de Artiesten-app. Samengevoegde artiesten blijven historisch zichtbaar, maar worden standaard uit de actieve lijst gefilterd. Via `mergeStatus` kan de gebruiker ze alsnog tonen of apart bekijken.
+
+Het relatiepaneel bevat nu een read-only kaart **Mergehistorie**. Samengevoegde artiesten tonen **Open leidende artiest**. Reguliere mutatieacties op samengevoegde artiesten worden bewust uitgeschakeld.
+
+
+## ART-015C-3-Fix-1 — Duplicate state reset
+
+Testbevinding: duplicate candidates bleven zichtbaar nadat de gebruiker terugging naar de artiestenlijst of een andere artiest selecteerde. Dit gaf de indruk dat oude kandidaten bij de nieuwe artiest hoorden.
+
+Oplossing: `resetDuplicateWorkflowState()` toegevoegd en aangeroepen bij selectie van een andere artiest, bij leegmaken van selectie en bij **Terug naar artiestenlijst**. Geen databasewijziging nodig.
+
+## ART-015C-3-Fix-2 — Merge SQL typing en structured logging
+
+Testbevinding: bij `Merge uitvoeren` ontstond PostgreSQL-fout `could not determine data type of parameter $1`. De transactie werd niet uitgevoerd, wat de rollback-eis bevestigt, maar de foutdiagnose was onvoldoende.
+
+Besluit/fix:
+
+- merge SQL-parameters in history/audit/alert en gevoelige update-stappen krijgen expliciete casts;
+- `LOG_LEVEL` wordt door de logger gerespecteerd;
+- merge-service logt stapgericht met `artist_merge.<step>`;
+- rollback-log bevat `failedStep`;
+- API-response bij technische mergefout bevat veilige rollbackmelding en `mergeStep`;
+- frontend toont de stapnaam in de foutmelding.
+
+
+## 2026-05-26 — ART-015C-3-Fix-3
+
+Testbevinding opgelost: mergehistorie en merge-resultaat moeten expliciet artist keys tonen. De UI toont nu `redundant_artist_key`, `replacement_artist_key`, merge-id en affected-count details, zodat controle via SQL en de relatiepanelen eenduidig is.
+
+## ART-015C-3-Fix-4 — Merge history tabel leesbaarheid
+
+De merge-history tabel is aangepast zodat de horizontale scrollbar de inhoud niet langer onleesbaar maakt. De tabel gebruikt nu een dedicated scroll-wrapper met extra onderruimte, cellen mogen tekst afbreken, en affected counts worden als compacte chips getoond. Er is geen databasewijziging nodig.
+
+## ART-015D — Periodieke duplicate scanner ontwerp
+
+Besluit: na afronding van de interactieve ontdubbel-flow wordt de onderhoudsvariant uitgewerkt. De onderhoudsvariant bestaat uit een periodieke scanner, bij voorkeur in Python, die mogelijke dubbele artiesten detecteert en candidates klaarzet in staging/reviewtabellen.
+
+Architectuurprincipe:
+
+```text
+scanner vindt kandidaten
+→ staging/reviewqueue
+→ bestaande impactscan
+→ bestaande transactionele merge
+→ bestaande mergehistorie/audit/alerts
+```
+
+De scanner voert zelf geen merge uit. Dit houdt de bestaande ART-015C transactionele merge-service centraal en voorkomt dubbele merge-logica.
+
+ART-015D is vastgelegd als ontwerp- en documentatiesprint. Implementatie wordt voorgesteld in ART-015D-1, ART-015D-2 en ART-015D-3.
+
+---
+
+## ART-015D-1 implementatienotities
+
+De periodieke duplicate scanner basis is toegevoegd.
+
+Belangrijke keuzes:
+
+- De scanner is Python, maar gebruikt geen externe Python database dependency.
+- Database-interactie loopt via `docker exec ... psql`, passend bij de Docker PostgreSQL-setup.
+- Scannerresultaten worden opgeslagen in stagingtabellen en worden later via ART-015D-2 in een reviewqueue getoond.
+- De scanner voert nooit automatisch een merge uit.
+- Dry-run is beschikbaar voor veilige eerste beoordeling.
+- Logging wordt geschreven naar `logs/` als wrapper-log en JSONL scanner-log.
+- Bij succesvolle scan kan een Shellstarter-alert worden geschreven.
+
+Runvolgorde lokaal:
+
+```bash
+npm run db:migrate:art015d1
+npm run scan:duplicates -- --dry-run --verbose
+npm run scan:duplicates
+```
+
+## ART-015D-2A projectnotitie
+
+De duplicate scanner is gehard voor herhaalde runs. Candidateparen worden nu duurzaam herkend met `artist_key_low` en `artist_key_high`. Een nieuwe scan maakt geen nieuwe open candidate als het paar al openstaat; in plaats daarvan worden `last_seen_at`, `last_seen_scan_run_id` en `times_seen` bijgewerkt. Afgehandelde paren met `not_duplicate`, `ignored` of `merged` worden niet opnieuw als werkvoorraad aangeboden.
+
+De reviewqueue is nog niet gebouwd; ART-015D-2B moet deze stagingdata in de Artiesten-app ontsluiten.
+
+## ART-015D-2A-Fix-1 — Scanner psql stdin hardening
+
+Tijdens lokaal testen faalde `npm run scan:duplicates` met `exec /usr/bin/psql: argument list too long`. De oorzaak was dat de Python scanner grote gegenereerde SQL-batches via `psql -c` als command argument meegaf. De scanner gebruikt nu `subprocess.run(..., input=sql)` en voert SQL via stdin aan `psql`, zodat grote candidate batches niet meer tegen de OS argument-length limiet aanlopen.
