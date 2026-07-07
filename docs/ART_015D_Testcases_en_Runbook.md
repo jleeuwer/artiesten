@@ -383,3 +383,52 @@ De scanner vult bij nieuwe candidates nu expliciet:
 npm run test:art015d2a:fix2
 npm run scan:duplicates
 ```
+
+## ART-015D-2B — Reviewqueue testcases
+
+### Handmatige test
+
+1. Draai scanner:
+   ```bash
+   npm run scan:duplicates
+   ```
+2. Start app en open **Duplicate reviewqueue**.
+3. Controleer dat candidates zichtbaar zijn.
+4. Filter op status `open`, `new`, `ignored`, `not_duplicate` en `all`.
+5. Markeer een candidate als **Geen dubbel**.
+6. Markeer een candidate als **Negeren**.
+7. Open een candidate via **Maak A leidend** of **Maak B leidend** en controleer dat de bestaande impactscan opent.
+8. Voer een merge uit en controleer dat de candidate status `merged` krijgt.
+
+### SQL-controle na merge vanuit reviewqueue
+
+```sql
+select candidate_id, status, merge_id, reviewed_at, reviewed_by
+from artist_duplicate_candidates
+order by reviewed_at desc nulls last, candidate_id desc
+limit 20;
+```
+
+## ART-015D-3 — Scheduling, alerts en operationele hardening
+
+Zie ook:
+
+```text
+docs/ART_015D_3_Testcases_en_Runbook.md
+```
+
+Belangrijkste testcommando's:
+
+```bash
+npm run test:art015d3
+npm run test:art015d
+npm run test:packaging
+```
+
+Operationeel:
+
+```bash
+npm run scan:duplicates -- --dry-run --verbose
+npm run scan:duplicates
+./startapp.sh
+```

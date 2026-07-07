@@ -589,3 +589,20 @@ Als een bestaande database al dubbele open candidates bevat, wordt de index niet
 ### Niet in scope
 
 ART-015D-2A bouwt nog geen reviewqueue UI. Dat volgt in ART-015D-2B.
+
+## 14. ART-015D-3 aanvulling — scheduling, alerts en operationele hardening
+
+ART-015D-3 werkt de operationele laag verder uit. Zie het aparte document:
+
+```text
+docs/ART_015D_3_Scheduling_Alerts_Operational_Hardening.md
+```
+
+Kernbesluiten:
+
+- handmatig starten blijft mogelijk via `npm run scan:duplicates`;
+- periodiek draaien wordt gedocumenteerd voor crontab en macOS launchd;
+- Shellstarter-alerts zijn de primaire signalering voor scanresultaten en fouten;
+- mail wordt functioneel voorbereid maar nog niet hard geïmplementeerd;
+- `startapp.sh` wordt meegeleverd als uitvoerbaar lokaal validatie-/startscript;
+- logs blijven timestamped in `logs/`.

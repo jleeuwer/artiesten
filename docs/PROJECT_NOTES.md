@@ -439,3 +439,282 @@ Tijdens lokaal testen faalde `npm run scan:duplicates` met `exec /usr/bin/psql: 
 ## ART-015D-2A-Fix-2 — Candidate timestamps bij scanner inserts
 
 Tijdens een echte `npm run scan:duplicates` run bleek dat nieuwe records in `artist_duplicate_candidates` faalden op de NOT NULL constraint van `first_seen_at`. De scanner vult nu bij nieuwe candidates expliciet `first_seen_at`, `last_seen_at`, `first_seen_scan_run_id`, `last_seen_scan_run_id` en `times_seen`. Hiermee sluit de scanner aan op de ART-015D-2A rerun-hardening migratie.
+
+## ART-015D-2B — Duplicate reviewqueue
+
+De periodieke duplicate scanner heeft nu een reviewqueue in de Artiesten-app. De scanner blijft read-only/signalering; de gebruiker verwerkt candidates via de UI. Merge-acties lopen via de bestaande ART-015C transactionele merge-service. Bij merge vanuit de queue wordt de candidate transactioneel gekoppeld aan de mergehistorie via `merge_id`.
+
+## ART-015D-3 — Scheduling, alerts en operationele hardening
+
+ART-015D-3 is functioneel/technisch uitgewerkt als operationele laag rondom de duplicate scanner.
+
+Belangrijkste besluiten:
+- De scanner blijft review-only en voert nooit automatische merges uit.
+- Scheduling wordt eerst ondersteund via handmatige start, crontab en macOS launchd-documentatie.
+- Shellstarter-alerts zijn geschikt voor scanresultaten, scanfouten en stale reviewqueue-signalen.
+- Mail wordt voorlopig alleen functioneel voorbereid; harde koppeling wacht op het Shellstarter-mailcontract.
+- `startapp.sh` wordt meegeleverd als uitvoerbaar script voor lokale install/build/test/dev-keten met timestamped logs in `logs/`.
+- Er is geen nieuwe SQL-migratie nodig voor deze ontwerpsprint.
+
+## ART-015D-3A — Scanner alert hardening
+
+Besluit: Shellstarter-alerts zijn nu concreet geïmplementeerd voor duplicate scanner-runs. Succes-alerts worden alleen geschreven bij actieve candidates. Fout-alerts krijgen severity `danger`. Mail blijft buiten scope totdat het Shellstarter-mailcontract is uitgewerkt.
+
+## ART-015D-3B — Scheduler scripts en install manual
+
+De periodieke duplicate scanner kan nu praktisch ingepland worden via cron of macOS launchd. De scanner blijft niet-mutatief ten aanzien van merges: hij schrijft alleen candidates naar staging/reviewqueue. De gebruiker verwerkt candidates daarna via de Artiesten-app reviewqueue en bestaande transactionele mergeflow.
+
+Toegevoegde scripts:
+- `scripts/scheduled-duplicate-scan.sh`
+- `scripts/install-cron-duplicate-scan.sh`
+- `scripts/uninstall-cron-duplicate-scan.sh`
+- `scripts/install-launchd-duplicate-scan.sh`
+- `scripts/uninstall-launchd-duplicate-scan.sh`
+
+## ART-015D-3B-Fix-1 — Env example refresh
+
+Naar aanleiding van een testbevinding is een refresh-script toegevoegd voor `.env.example`. Dit voorkomt dat een bestaande lokale projectdirectory een verouderde env-template houdt zonder `ARTIST_DUPLICATE_ALERT_ENABLED` en `ARTIST_DUPLICATE_ALERT_WARNING_THRESHOLD`.
+
+Gebruik:
+
+```bash
+npm run env:refresh-example
+```
+
+
+## ART-015D-3B-Fix-2 — Testscript/env-template hardening
+
+De ART-015D-3B scheduler contracttest is minder broos gemaakt: `test:art015d3b` mag meerdere ART-015D-3B tests draaien zolang de scheduler-test onderdeel blijft. `.env.example` bevat de duplicate scanner- en alertvariabelen.
+
+## ART-015D-3C — Stale reviewqueue signalering
+
+Besluit: de periodieke duplicate scanner mag oude reviewqueue-werkvoorraad signaleren, maar niet automatisch sluiten of wijzigen. De reviewqueue toont stale candidates op basis van `ARTIST_DUPLICATE_STALE_REVIEW_DAYS`. Shellstarter-alerts worden verrijkt met open/stale aantallen.
+
+## ART-015D-3C-Fix-1 — Signalering en env-documentatie hardening
+
+- `.env.example` is aangevuld/gecontroleerd op de volledige duplicate-scanner configuratieset.
+- Documentatie maakt expliciet onderscheid tussen:
+  - Shellstarter-alerts via `public.alerts`;
+  - UI-signalering in de reviewqueue;
+  - mail als nog niet technisch geïmplementeerd kanaal.
+- ART-015D-3D blijft het vervolgitem voor het Shellstarter-mailcontract.
+
+## ART-015D-3D — Shellstarter mailcontract
+
+ART-015D-3D legt het mailcontract voor de duplicate-maintenance flow vast. Bestaande signalering via `public.alerts` en UI-badges blijft geïmplementeerd. Echte mailverzending wordt nog niet technisch uitgevoerd door de Artiesten-app.
+
+Ontwerpbesluit:
+- De Artiesten-app verstuurt geen mail rechtstreeks via SMTP, Outlook of eigen mailclient.
+- Shellstarter is eigenaar van ontvangers, voorkeuren, verzending, retry en delivery-status.
+- Voorkeursrichting is een notification outbox, zodat scanner en mergeflow losgekoppeld blijven van runtime mailtransport.
+- Mail is bedoeld voor escalatie: scanfouten, stale reviewqueue boven drempel en high-impact merges. Normale scans en normale merges blijven primair alerts.
+- ART-015D-3D bevat geen SQL-migratie; het outboxschema wordt pas geïmplementeerd nadat het Shellstarter-mailcontract in Shellstarter is bevestigd.
+
+## ART-012 — Discogs artist enrichment ontwerp
+
+Datum: 2026-06-06
+
+Ontwerpbesluiten:
+
+- De lokale `artist.ar_artist_key` blijft de primaire sleutel binnen `musicdb`.
+- Discogs artist ID wordt nooit gebruikt als vervanging voor lokale artist keys.
+- Discogs artist ID is alleen een externe lookup key om Discogs-data op te halen en te verversen.
+- De lokale `artist` tabel kan functioneel rijker worden, maar brondata en lokale waarheid blijven gescheiden.
+- Voorkeursrichting is een generiek extern-bronmodel met `artist_external_reference` en `artist_enrichment_cache`.
+- Discogs-data wordt niet automatisch toegepast op lokale artistvelden; gebruiker bevestigt koppeling en eventuele verrijking.
+- Discogs aliases/name variations kunnen later gebruikt worden als input voor duplicate detection.
+- Discogs groups/members kunnen later ART-013 muzikant/band/relaties voeden.
+- Albums blijven buiten scope van ART-012A, maar het ontwerp blijft uitbreidbaar richting ART-014.
+- Wikipedia/Wikidata/MusicBrainz worden als bredere externe enrichment-bronnen apart opgenomen onder ART-017.
+
+
+ART-012A-Fix-1: Discogs artist images worden ontwerptechnisch opgeslagen als metadata/URL/cache-referentie, niet als binaire data in PostgreSQL. Het basispad voor lokale image-cache wordt via `ARTIST_IMAGE_CACHE_DIR` in `.env` geconfigureerd; databasepaden blijven relatief.
+
+## ART-012B-Prep — Discogs env-standaardisatie
+
+Besluit: voor nieuwe Discogs-code gebruikt de Artiesten-app `DISCOGS_USER_TOKEN`, `DISCOGS_USER_AGENT`, `DISCOGS_BASE_URL`, `DISCOGS_CACHE_TTL_SECONDS` en `DISCOGS_REQUEST_TIMEOUT_MS`.
+
+Legacy-variabelen uit Importeren Songs (`DISCOGS_API_TOKEN`, `DISCOGS_API_BASE_URL`, `DISCOGS_ENABLED`) worden alleen als fallback/migratiepad beschouwd. Nieuwe `.env.example` templates bevatten deze legacy-namen niet als actieve configuratie.
+
+`config/discogsConfig.js` centraliseert het uitlezen van de configuratie en bepaalt of Discogs functioneel beschikbaar is. Discogs is beschikbaar als token, user-agent en base URL aanwezig zijn. Een ontbrekende token moet in ART-012B leiden tot disabled UI-acties en een duidelijke configuratiemelding.
+
+## ART-012B — Discogs artist search/detail basisimplementatie
+
+ART-012B is geïmplementeerd als inspect-only basis voor Discogs artist enrichment.
+
+Besluiten:
+
+- Lokale `artist.ar_artist_key` blijft leidend.
+- Discogs artist ID wordt alleen gebruikt voor lookup/broncontext.
+- Discogs-data wordt nog niet toegepast op lokale records.
+- Database is voorbereid met `artist_external_reference`, `artist_enrichment_cache` en `artist_external_image`.
+- Image metadata wordt voorbereid, maar binaire bestanden worden niet in PostgreSQL opgeslagen.
+- Koppelen/toepassen volgt in ART-012C.
+
+## ART-012B-Fix-1 — Discogs paneel en env-template
+
+Testbevinding opgelost: het Discogs artist enrichment resultatenpaneel was te smal, waardoor de **Detail** knop deels buiten beeld viel. De Discogs-kaart gebruikt nu de volledige relatiegrid-breedte en de resultaatstabel heeft een scroll-safe wrapper met vaste actiekolom.
+
+Ook is de env-template gehard: `.env.example` en `scripts/env-refresh-example.sh` bevatten nu de actuele ART-012 Discogs/image-cache variabelen én de ART-015D duplicate-scanner variabelen. Legacy Discogs-templatevariabelen worden niet opgenomen in `.env.example`.
+
+## ART-012C — Discogs artist link implementation
+
+ART-012C voegt het koppelen van een gekozen Discogs artist aan een lokale artist toe. De lokale `artist.ar_artist_key` blijft altijd leidend. De Discogs artist ID wordt opgeslagen als externe referentie en gebruikt als lookup-key voor latere refresh/enrichment.
+
+De implementatie gebruikt de ART-012B tabellen:
+- `artist_external_reference` voor de actieve bronkoppeling;
+- `artist_enrichment_cache` voor raw/normalized Discogs-data;
+- `artist_external_image` voor image metadata/URL's.
+
+Binaire images worden niet in PostgreSQL opgeslagen. Een eventuele lokale image-cache blijft een latere uitbreiding en gebruikt relatieve cachepaden onder `ARTIST_IMAGE_CACHE_DIR`.
+
+## ART-012C-Fix-1 — Discogs koppeling persistentie en datums
+
+Tijdens testen bleek dat Discogs-koppelacties geen zichtbare records opleverden in de externe referentie/cachetabellen. De link-flow is aangepast zodat optionele auditlogging binnen een savepoint draait en ontbrekende auditinfrastructuur de hoofdtransactie niet meer terugdraait. Daarnaast is vastgelegd en geïmplementeerd dat gestructureerde geboorte-/overlijdensdatums uit Discogs alleen lege lokale artistvelden mogen vullen en nooit bestaande lokale waarden overschrijven.
+
+
+## ART-012C-Fix-2 — Runbook querycorrectie en koppelresultaat
+
+- Controlequery voor `artist_enrichment_cache` gebruikt `fetched_at`, niet `synced_at`.
+- Documentatie verduidelijkt welke drie tabellen worden gevuld na **Koppel Discogs artist**.
+- Geen nieuwe SQL-migratie nodig.
+
+## ART-012C-Fix-3 — Discogs naamvoorstel en artiestenspelling
+
+Tijdens ART-012C is bevestigd dat de lokale artistnaam niet automatisch uit Discogs mag worden overschreven. De reden is niet alleen veiligheid, maar vooral het spelling-/mappingmodel met `artiesten_spelling`.
+
+Ontwerpbesluit: Discogs artist names zijn voorstellen. `Koppel Discogs artist` registreert alleen de externe bron en cachedata. Een toekomstige canonical naamwijziging moet via een spelling-aware flow lopen die `artist.ar_artist_name` en `artiesten_spelling` consistent bijwerkt, oude canonical namen bewaart als spelling en conflicten controleert.
+
+
+## ART-012D — Discogs naamvoorstellen en artiestenspelling
+
+ART-012D is functioneel en technisch uitgewerkt als ontwerpsprint. Discogs artist names zijn bronvoorstellen en worden nooit direct gebruikt om `artist.ar_artist_name` te overschrijven.
+
+Belangrijkste ontwerpbesluiten:
+
+- Discogs-namen kunnen later als alternatieve spelling worden toegepast.
+- Canonical rename vereist een aparte spelling-aware flow.
+- Oude canonical namen moeten als alternatieve spelling behouden blijven.
+- Conflicten worden gecontroleerd via `artiesten_spelling.as_alternatieve_spelling`.
+- Canonical rename moet transactioneel en auditbaar zijn.
+- ART-012D-1 wordt aanbevolen als eerste implementatiesprint: voorstellen ophalen en tonen zonder mutaties.
+
+## ART-012D-1 — Discogs spellingvoorstellen read-only
+
+ART-012D-1 is toegevoegd als veilige tussenstap vóór het toepassen van Discogs-data. De app toont naamvoorstellen uit de gekoppelde Discogs-bron, maar wijzigt nog niets in `artist` of `artiesten_spelling`.
+
+Belangrijke ontwerpregel blijft: Discogs artist names zijn bronvoorstellen. Canonical artist name wijzigingen mogen alleen via een latere spelling-aware flow plaatsvinden.
+
+## ART-012D-2 — Discogs alternatieve spelling
+
+Besluit: Discogs-naamvoorstellen mogen als alternatieve spelling worden toegevoegd, maar wijzigen nooit automatisch de lokale canonical artist name. De mutatie loopt via `artiesten_spelling`, met server-side conflictcontrole op bestaande spellingen. Canonical rename blijft een aparte toekomstige spelling-aware flow.
+
+
+## ART-012D-3 — Canonical rename spelling-aware design
+
+ART-012D-3 is uitgewerkt als ontwerp voor het canonical maken van een Discogs artist name. Belangrijk besluit: Discogs-koppelen blijft gescheiden van canonical rename. Een nieuwe canonical naam mag alleen worden toegepast via een spelling-aware transactie die `artist.ar_artist_name` én `artiesten_spelling` consistent houdt. De oude canonical naam blijft als alternatieve spelling bewaard. Conflicten op bestaande canonical namen en alternatieve spellingen blokkeren de actie.
+
+
+## ART-012D-2-Fix-1 — Actieknop voor beschikbare spellingvoorstellen
+
+Bij Discogs naamvoorstellen moet de actie **Voeg toe als spelling** zichtbaar zijn voor voorstellen met `available_discogs_name` en `available_alternative_spelling`. De knop schrijft alleen naar `artiesten_spelling`; `artist.ar_artist_name` blijft ongewijzigd. Niet-toepasbare voorstellen tonen een duidelijke niet-toepasbaar-status.
+
+## ART-012D-3A — Canonical rename preview
+
+ART-012D-3A implementeert een read-only preview voor het mogelijk canonical maken van een Discogs-naam. De preview is bewust niet-mutatief: `artist.ar_artist_name` en `artiesten_spelling` blijven ongewijzigd. De preview controleert conflicten met bestaande canonical artist names en bestaande spellingen bij andere artists, en toont welk spelling-aware transactieplan later nodig is.
+
+
+## ART-012D-3A-Fix-1 — Discogs spellingvoorstellen UX
+
+Testbevinding: de knoppen **Voeg toe als spelling** en **Preview canonical** waren functioneel aanwezig, maar de gebruiker zag onvoldoende waarom ze pas na koppeling/voorstellen laden verschijnen. De UI en documentatie zijn aangescherpt. Discogs-koppeling, spelling toevoegen en canonical-preview blijven gescheiden stappen.
+
+## ART-012D-3B — Canonical rename execution
+
+Toegevoegd: spelling-aware uitvoering van canonical rename via Discogs-naamvoorstel. De lokale `artist.ar_artist_name` wordt alleen gewijzigd na preview en expliciete bevestiging. De oude canonical naam blijft behouden als alternatieve spelling en de nieuwe canonical naam wordt in `artiesten_spelling` geborgd. Geen nieuwe SQL-migratie.
+
+## ART-012E-1 — Discogs gekoppeld-indicatie en artist type
+
+ART-012E is bewust opgesplitst in kleine testbare stappen. ART-012E-1 doet nog geen echte verrijking, maar legt de basis:
+
+- Discogs gekoppelde artiesten zijn herkenbaar in de artiestenlijst met `<i class="bi bi-link"></i>`.
+- `artist.ar_artist_type` is toegevoegd met default `unknown`.
+- Toegestane artist type waarden: `unknown`, `person`, `duo`, `trio`, `group`, `band`, `alias`, `project`.
+- `band` is niet aantal-gebaseerd; `duo` en `trio` zijn aparte bruikbare classificaties.
+- Artist type wordt handmatig gekozen en niet automatisch door Discogs gezet.
+
+Migratie:
+
+```bash
+npm run db:migrate:art012e1
+```
+
+Test:
+
+```bash
+npm run test:art012e1
+```
+
+
+## ART-012E-1-Fix-2 — Discogs link-icoon direct zichtbaar na koppelen
+
+Na succesvolle Discogs-koppeling houdt de frontend de gekoppelde artist key optimistisch bij, zodat `<i class="bi bi-link"></i>` direct in de artiestentabel verschijnt zonder handmatige browserrefresh. De serverrefresh blijft behouden; na browserrefresh blijft de databasekoppeling leidend.
+
+## 2026-06-08 — ART-012E-2 Discogs profielfoto
+
+Na acceptatie van ART-012E-1 is ART-012E-2 uitgewerkt als aparte kleine sprint. De app toont bij een gekoppelde Discogs-artiest de beschikbare Discogs images en laat de gebruiker één image kiezen als primaire profielfoto. De keuze wordt opgeslagen in `artist_external_image.is_primary`. De migratie normaliseert bestaande primaire images en voegt een partial unique index toe zodat per artiest maximaal één primaire image mogelijk is.
+
+Bewust buiten scope gehouden: lokale image-cache download, enrichment proposals, datumextractie en profielteksttoepassing.
+
+## 2026-06-08 — ART-012E-3 Enrichment proposals preview
+
+ART-012E-3 bouwt een read-only proposal-laag voor Discogs-verrijking. De app kan voorstellen genereren uit de bestaande Discogs-cache/reference en toont lokale waarde, voorgestelde waarde, status, confidence en context.
+
+Belangrijk ontwerpbesluit: profieltekst mag gebruikt worden voor kandidaat-extractie, maar waarden worden niet automatisch toegepast. Onvolledige datums blijven alleen zichtbaar als voorstel, omdat de lokale velden echte `date`-velden zijn.
+
+## 2026-06-08 — ART-012E-4 Discogs enrichment proposal apply
+
+ART-012E-4 voegt gecontroleerde apply-acties toe aan de Discogs verrijkingsvoorstellen uit ART-012E-3. Voorstellen kunnen expliciet worden toegepast, genegeerd of later beoordeeld. Bestaande lokale waarden worden beschermd door confirm-overwrite gedrag. Discogs-profieltekst wordt opgeslagen in `artist_external_profile` en niet in `artist.ar_artist_notes`. Onvolledige datums blijven zichtbaar, maar zijn niet toepasbaar op de `date`-velden van `artist`.
+
+
+## ART-012E-4-Fix-1 — Apply refresh artist-state
+
+Na het toepassen van een verrijkingsvoorstel gebruikt de frontend de actuele `artist` uit de apply-response om de artiestentabel, geselecteerde artiest, relatie-inzicht en eventueel geopende detailcontext direct bij te werken. Voor `artist_external_profile.profile_text` wordt expliciet gemeld dat dit externe profieldata is en dat de lokale `artist`-tabel daarbij niet wijzigt.
+
+## 2026-06-08 — ART-012E-4-Fix-6 Nederlandse datumweergave
+
+- Geboorte- en sterfdatums worden in de Artiesten-app op schermen getoond als `dd-mm-jjjj`.
+- Database/API blijven `YYYY-MM-DD` gebruiken.
+- Native edit-formulier date inputs blijven `YYYY-MM-DD`, passend bij HTML `input type="date"`.
+- Geen database-migratie nodig.
+
+## ART-012D-4 — Discogs naamvoorstellen reviewqueue
+
+De tijdelijke Discogs spellingvoorstellen zijn uitgebreid met een persistente reviewqueue in `artist_name_proposals`. De apply-actie voor `Voeg toe als spelling` hergebruikt de bestaande veilige ART-012D-2 flow en wijzigt `artist.ar_artist_name` niet.
+
+## ART-UI-1A — Detail/edit UX foundation
+
+ART-UI-1A pakt de eerste UI/UX-hardening op voor de Artiesten-app. Het edit-scherm is verbreed, het onderste relatie/detailgebied heeft een paneelnavigatie gekregen en het relatiepaneel is de primaire scrollcontainer geworden. Externe Discogs-profieltekst uit `artist_external_profile` wordt read-only getoond in het Discogs-gedeelte; lokale notities blijven apart in `artist.ar_artist_notes`.
+
+## ART-UI-Date-1 — Datepicker bij Nederlandse datum-invoer
+
+De datumvelden in het artist edit-scherm blijven zichtbaar en handmatig invoerbaar als `dd-mm-jjjj`, maar de native datepicker is opnieuw betrouwbaar aanklikbaar gemaakt via het kalendericoon. Database/API blijven `YYYY-MM-DD` gebruiken. Geen database-migratie nodig.
+
+## ART-013A — One-way artist → musician sync
+
+ART-013A legt de basis voor het verder uitwerken van musicus/band-relaties zonder een nieuw generiek relatiedatamodel naast de bestaande tabellen te introduceren.
+
+Het bestaande model bevat `musician` en `musician_in_band`. Voor de eerste sprint is gekozen voor een kleine databasegestuurde synchronisatie van `artist` naar `musician`:
+
+- alleen bij update;
+- alleen voor persoonsartiesten (`ar_artist_type = 'person'`);
+- alleen voor bestaande gekoppelde musicians;
+- nooit bidirectioneel;
+- geen automatische musician-aanmaak;
+- geen delete/merge-sync.
+
+De implementatie gebruikt een PostgreSQL functie en trigger, zodat updates via Node.js, pgAdmin of scripts consistent hetzelfde gedrag krijgen.
+
+Belangrijk: `musician.mu_musician_dateofbirth` is in het huidige schema `NOT NULL`. Als de artist-geboortedatum leeg is, behoudt de trigger daarom de bestaande musician-geboortedatum in plaats van de artist-update te blokkeren of een placeholderdatum te verzinnen.
+
+
+ART-013A ontwerpnotitie: er is geen automatische aanmaak van musician-records.

@@ -1,4 +1,5 @@
 const Artist = require("../models/artist");
+const Discogs = require("../services/discogsClient");
 
 function normalizePayload(body = {}) {
   const text = (value) => {
@@ -7,12 +8,24 @@ function normalizePayload(body = {}) {
     return trimmed === "" ? null : trimmed;
   };
 
+  const isoDate = (value) => {
+    const normalized = text(value);
+    if (!normalized) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+      const err = new Error("Invalid date format. Use YYYY-MM-DD.");
+      err.statusCode = 400;
+      throw err;
+    }
+    return normalized;
+  };
+
   return {
     ar_artist_name: text(body.ar_artist_name),
-    ar_artist_dateofbirth: text(body.ar_artist_dateofbirth),
-    ar_artist_passing: text(body.ar_artist_passing),
+    ar_artist_dateofbirth: isoDate(body.ar_artist_dateofbirth),
+    ar_artist_passing: isoDate(body.ar_artist_passing),
     ar_website_url: text(body.ar_website_url),
     ar_artist_notes: text(body.ar_artist_notes),
+    ar_artist_type: text(body.ar_artist_type) || 'unknown',
   };
 }
 
@@ -56,6 +69,379 @@ async function getRelations(req, res) {
   res.json(relations);
 }
 
+
+async function getDiscogsConfigStatus(req, res) {
+  res.json(Discogs.getDiscogsStatus(process.env));
+}
+
+async function searchDiscogsForArtist(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  const artist = await Artist.getById(id);
+  if (!artist) return res.status(404).json({ error: "Artist not found" });
+
+  const query = (req.query.q ?? artist.ar_artist_name ?? "").toString().trim();
+  const limit = Math.min(Math.max(Number(req.query.limit ?? 10), 1), 25);
+
+  try {
+    const result = await Discogs.searchArtists(query, { limit, env: process.env });
+    res.json({
+      artist: {
+        ar_artist_key: artist.ar_artist_key,
+        ar_artist_name: artist.ar_artist_name,
+      },
+      discogs: result,
+      config: Discogs.getDiscogsStatus(process.env),
+    });
+  } catch (err) {
+    if (err.code === "DISCOGS_NOT_CONFIGURED" || err.statusCode === 503) {
+      return res.status(503).json({
+        error: "Discogs is niet geconfigureerd.",
+        disabledReason: err.message,
+        config: Discogs.getDiscogsStatus(process.env),
+      });
+    }
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message, discogsStatusCode: err.discogsStatusCode || null });
+    throw err;
+  }
+}
+
+async function getDiscogsArtistDetail(req, res) {
+  const discogsArtistId = Number(req.params.discogsArtistId);
+  if (!Number.isFinite(discogsArtistId) || discogsArtistId <= 0) {
+    return res.status(400).json({ error: "Invalid Discogs artist id" });
+  }
+
+  try {
+    const detail = await Discogs.getArtistDetail(discogsArtistId, { env: process.env });
+    res.json({ detail, config: Discogs.getDiscogsStatus(process.env) });
+  } catch (err) {
+    if (err.code === "DISCOGS_NOT_CONFIGURED" || err.statusCode === 503) {
+      return res.status(503).json({
+        error: "Discogs is niet geconfigureerd.",
+        disabledReason: err.message,
+        config: Discogs.getDiscogsStatus(process.env),
+      });
+    }
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message, discogsStatusCode: err.discogsStatusCode || null });
+    throw err;
+  }
+}
+
+
+async function linkDiscogsArtist(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  const discogsArtistId = Number(req.body?.discogsArtistId ?? req.body?.discogs_artist_id);
+  if (!Number.isFinite(discogsArtistId) || discogsArtistId <= 0) {
+    return res.status(400).json({ error: "Invalid Discogs artist id" });
+  }
+
+  const artist = await Artist.getById(id);
+  if (!artist) return res.status(404).json({ error: "Artist not found" });
+
+  try {
+    const detail = await Discogs.getArtistDetail(discogsArtistId, { env: process.env });
+    const result = await Artist.linkDiscogsArtist({
+      artistKey: id,
+      discogsDetail: detail,
+      performedBy: req.body?.performedBy || req.user?.username || "artist-app",
+      cacheTtlSeconds: Discogs.getDiscogsStatus(process.env).cacheTtlSeconds,
+    });
+    res.status(201).json({ ...result, detail, config: Discogs.getDiscogsStatus(process.env) });
+  } catch (err) {
+    if (err.code === "DISCOGS_NOT_CONFIGURED" || err.statusCode === 503) {
+      return res.status(503).json({
+        error: "Discogs is niet geconfigureerd.",
+        disabledReason: err.message,
+        config: Discogs.getDiscogsStatus(process.env),
+      });
+    }
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message, discogsStatusCode: err.discogsStatusCode || null });
+    throw err;
+  }
+}
+
+
+async function getDiscogsImages(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  try {
+    const data = await Artist.listDiscogsImages(id);
+    if (!data) return res.status(404).json({ error: "Artist not found" });
+    res.json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    throw err;
+  }
+}
+
+async function setPrimaryDiscogsImage(req, res) {
+  const id = Number(req.params.id);
+  const imageId = Number(req.params.imageId);
+  if (!Number.isFinite(id) || !Number.isFinite(imageId)) {
+    return res.status(400).json({ error: "Invalid artist id or image id" });
+  }
+
+  try {
+    const data = await Artist.setPrimaryDiscogsImage({
+      artistKey: id,
+      imageId,
+      performedBy: req.body?.performedBy || req.user?.username || "artist-app",
+    });
+    res.json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    throw err;
+  }
+}
+
+
+
+async function getDiscogsEnrichmentProposals(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  try {
+    const data = await Artist.listDiscogsEnrichmentProposals(id);
+    if (!data) return res.status(404).json({ error: "Artist not found" });
+    res.json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    throw err;
+  }
+}
+
+async function generateDiscogsEnrichmentProposals(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  try {
+    const data = await Artist.generateDiscogsEnrichmentProposals(id);
+    if (!data) return res.status(404).json({ error: "Artist not found" });
+    res.status(201).json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    throw err;
+  }
+}
+
+
+async function updateDiscogsEnrichmentProposalStatus(req, res) {
+  const id = Number(req.params.id);
+  const proposalId = Number(req.params.proposalId);
+  if (!Number.isFinite(id) || !Number.isFinite(proposalId)) {
+    return res.status(400).json({ error: "Invalid artist id or proposal id" });
+  }
+
+  try {
+    const data = await Artist.updateDiscogsEnrichmentProposalStatus({
+      artistKey: id,
+      proposalId,
+      status: req.body?.status,
+      note: req.body?.note || "",
+      performedBy: req.body?.performedBy || req.user?.username || "artist-app",
+    });
+    res.json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message, code: err.code || null });
+    throw err;
+  }
+}
+
+async function applyDiscogsEnrichmentProposal(req, res) {
+  const id = Number(req.params.id);
+  const proposalId = Number(req.params.proposalId);
+  if (!Number.isFinite(id) || !Number.isFinite(proposalId)) {
+    return res.status(400).json({ error: "Invalid artist id or proposal id" });
+  }
+
+  try {
+    const data = await Artist.applyDiscogsEnrichmentProposal({
+      artistKey: id,
+      proposalId,
+      confirmOverwrite: req.body?.confirmOverwrite === true,
+      performedBy: req.body?.performedBy || req.user?.username || "artist-app",
+    });
+    res.json(data);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({
+        error: err.message,
+        code: err.code || null,
+        proposalId: err.proposalId || proposalId,
+        targetField: err.targetField || null,
+      });
+    }
+    throw err;
+  }
+}
+
+async function listDiscogsNameProposals(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  try {
+    const data = await Artist.listDiscogsNameProposals(id, {
+      status: req.query?.status || "all",
+      type: req.query?.type || "all",
+      q: req.query?.q || "",
+    });
+    if (!data) return res.status(404).json({ error: "Artist not found" });
+    res.json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message, code: err.code || null });
+    throw err;
+  }
+}
+
+async function generateDiscogsNameProposals(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  try {
+    const data = await Artist.generateDiscogsNameProposals(id);
+    if (!data) return res.status(404).json({ error: "Artist not found" });
+    res.status(201).json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message, code: err.code || null });
+    throw err;
+  }
+}
+
+async function updateDiscogsNameProposalStatus(req, res) {
+  const id = Number(req.params.id);
+  const proposalId = Number(req.params.proposalId);
+  if (!Number.isFinite(id) || !Number.isFinite(proposalId)) {
+    return res.status(400).json({ error: "Invalid artist id or proposal id" });
+  }
+
+  try {
+    const data = await Artist.updateDiscogsNameProposalStatus({
+      artistKey: id,
+      proposalId,
+      status: req.body?.status,
+      note: req.body?.note || "",
+      performedBy: req.body?.performedBy || req.user?.username || "artist-app",
+    });
+    res.json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message, code: err.code || null });
+    throw err;
+  }
+}
+
+async function applyDiscogsNameProposalAsSpelling(req, res) {
+  const id = Number(req.params.id);
+  const proposalId = Number(req.params.proposalId);
+  if (!Number.isFinite(id) || !Number.isFinite(proposalId)) {
+    return res.status(400).json({ error: "Invalid artist id or proposal id" });
+  }
+
+  try {
+    const data = await Artist.applyDiscogsNameProposalAsSpelling({
+      artistKey: id,
+      proposalId,
+      performedBy: req.body?.performedBy || req.user?.username || "artist-app",
+    });
+    if (!data) return res.status(404).json({ error: "Artist or proposal not found" });
+    res.status(201).json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message, code: err.code || null });
+    throw err;
+  }
+}
+
+async function getDiscogsSpellingProposals(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  try {
+    const data = await Artist.getDiscogsSpellingProposals(id);
+    if (!data) return res.status(404).json({ error: "Artist not found" });
+    res.json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    throw err;
+  }
+}
+
+
+async function addDiscogsAlternativeSpelling(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  try {
+    const result = await Artist.addDiscogsAlternativeSpelling({
+      artistKey: id,
+      proposedName: req.body?.proposedName || req.body?.proposed_name,
+      performedBy: req.body?.performedBy || req.user?.username || "artist-app",
+    });
+    if (!result) return res.status(404).json({ error: "Artist not found" });
+    res.status(201).json(result);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({
+        error: err.message,
+        code: err.code || null,
+        conflictingArtistKey: err.conflictingArtistKey || null,
+        conflictingArtistName: err.conflictingArtistName || null,
+      });
+    }
+    throw err;
+  }
+}
+
+
+
+async function getDiscogsCanonicalRenamePreview(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  try {
+    const result = await Artist.getDiscogsCanonicalRenamePreview({
+      artistKey: id,
+      proposedName: req.body?.proposedName || req.body?.proposed_name,
+    });
+    if (!result) return res.status(404).json({ error: "Artist not found" });
+    res.json(result);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message, code: err.code || null });
+    }
+    throw err;
+  }
+}
+
+
+async function executeDiscogsCanonicalRename(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+  try {
+    const result = await Artist.executeDiscogsCanonicalRename({
+      artistKey: id,
+      proposedName: req.body?.proposedName || req.body?.proposed_name,
+      performedBy: req.body?.performedBy || req.user?.username || "artist-app",
+    });
+    if (!result) return res.status(404).json({ error: "Artist not found" });
+    res.json(result);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({
+        error: err.message,
+        code: err.code || null,
+        conflictingArtistKey: err.conflictingArtistKey || null,
+        conflictingArtistName: err.conflictingArtistName || null,
+      });
+    }
+    throw err;
+  }
+}
+
 async function getMergeHistory(req, res) {
   const artistKey = req.query.artistKey !== undefined ? Number(req.query.artistKey) : null;
   if (artistKey !== null && !Number.isFinite(artistKey)) return res.status(400).json({ error: "Invalid artistKey" });
@@ -66,6 +452,37 @@ async function getMergeHistory(req, res) {
   res.json(data);
 }
 
+
+
+async function listDuplicateReviewCandidates(req, res) {
+  const status = (req.query.status ?? "open").toString();
+  const search = (req.query.search ?? "").toString();
+  const minScore = req.query.minScore !== undefined && req.query.minScore !== "" ? Number(req.query.minScore) : null;
+  const scanRunId = req.query.scanRunId !== undefined && req.query.scanRunId !== "" ? Number(req.query.scanRunId) : null;
+  const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 200);
+  const offset = Math.max(Number(req.query.offset ?? 0), 0);
+
+  const data = await Artist.listDuplicateReviewCandidates({ status, search, minScore, scanRunId, limit, offset });
+  res.json(data);
+}
+
+async function updateDuplicateCandidateStatus(req, res) {
+  const candidateId = Number(req.params.candidateId);
+  if (!Number.isFinite(candidateId)) return res.status(400).json({ error: "Invalid candidate id" });
+
+  try {
+    const updated = await Artist.updateDuplicateCandidateStatus(candidateId, {
+      status: req.body?.status,
+      note: req.body?.note,
+      reviewedBy: req.body?.reviewedBy || req.user?.username || "artist-app",
+    });
+    if (!updated) return res.status(404).json({ error: "Candidate not found" });
+    res.json(updated);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    throw err;
+  }
+}
 
 async function findDuplicateCandidates(req, res) {
   const id = Number(req.params.id);
@@ -118,6 +535,7 @@ async function executeMerge(req, res) {
       replacementArtistKey,
       reason: req.body?.reason,
       performedBy: req.body?.performedBy || req.user?.username || "artist-app",
+      duplicateCandidateId: req.body?.duplicateCandidateId,
     });
     res.status(201).json(result);
   } catch (err) {
@@ -227,7 +645,27 @@ module.exports = {
   list,
   get,
   getRelations,
+  getDiscogsConfigStatus,
+  searchDiscogsForArtist,
+  getDiscogsArtistDetail,
+  linkDiscogsArtist,
+  getDiscogsImages,
+  setPrimaryDiscogsImage,
+  getDiscogsEnrichmentProposals,
+  generateDiscogsEnrichmentProposals,
+  updateDiscogsEnrichmentProposalStatus,
+  applyDiscogsEnrichmentProposal,
+  listDiscogsNameProposals,
+  generateDiscogsNameProposals,
+  updateDiscogsNameProposalStatus,
+  applyDiscogsNameProposalAsSpelling,
+  getDiscogsSpellingProposals,
+  addDiscogsAlternativeSpelling,
+  getDiscogsCanonicalRenamePreview,
+  executeDiscogsCanonicalRename,
   getMergeHistory,
+  listDuplicateReviewCandidates,
+  updateDuplicateCandidateStatus,
   findDuplicateCandidates,
   getMergeImpact,
   executeMerge,

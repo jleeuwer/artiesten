@@ -24,7 +24,7 @@ test('ART-015D-2A adds rerun-hardening migration with durable pair keys and scan
 
 test('ART-015D-2A scanner updates existing open candidates and skips reviewed pairs', () => {
   const scanner = read('scripts/artist_duplicate_scanner.py');
-  assert.match(scanner, /SCANNER_VERSION = "art015d2a-20260526"/);
+  assert.match(scanner, /SCANNER_VERSION = "art015d(?:2a|3a|3c)-/);
   assert.match(scanner, /def fetch_existing_candidate_index/);
   assert.match(scanner, /def persist_candidates/);
   assert.match(scanner, /reviewed_statuses = \{"not_duplicate", "ignored", "merged"\}/);

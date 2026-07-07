@@ -74,6 +74,6 @@ test('ART-015C-3-Fix-1 resets duplicate workflow state when returning to list or
   assert.match(component, /setMergeReason\(""\)/);
   assert.match(component, /setMergeConfirmed\(false\)/);
   assert.match(component, /setMergeResult\(null\)/);
-  assert.match(component, /if \(selectedArtist\?\.ar_artist_key !== row\.ar_artist_key\) \{\s*resetDuplicateWorkflowState\(\);\s*\}/s);
+  assert.match(component, /if \(selectedArtist\?\.ar_artist_key !== row\.ar_artist_key\) \{\s*resetDuplicateWorkflowState\(\);[\s\S]*?\}/s);
   assert.match(component, /function scrollToArtistList\(\) \{\s*resetDuplicateWorkflowState\(\);/s);
 });

@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Any
 
-SCANNER_VERSION = "art015d2a-20260526"
+SCANNER_VERSION = "art015d3c-20260602"
 DEFAULT_MIN_SCORE = 82.0
 
 
@@ -501,15 +501,116 @@ def persist_candidates(db: PsqlDocker, scan_run_id: int, candidates: list[Candid
     return stats
 
 
-def write_alert(db: PsqlDocker, scan_run_id: int, candidate_count: int) -> None:
-    severity = "warning" if candidate_count >= 25 else "info"
+def env_bool(name: str, default: bool = True) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {"0", "false", "no", "off", "n"}
+
+
+def env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+
+def fetch_stale_review_stats(db: PsqlDocker) -> dict[str, int]:
+    """Return reviewqueue ageing statistics for open duplicate candidates.
+
+    ART-015D-3C: scanner scheduling is only useful when old review work does
+    not silently pile up. This query is read-only and is used to enrich
+    Shellstarter alerts with stale reviewqueue information.
+    """
+    threshold_days = max(1, env_int("ARTIST_DUPLICATE_STALE_REVIEW_DAYS", 14))
+    rows = db.copy_csv(
+        f"""
+        select
+          count(*) filter (
+            where status in ('new', 'reviewing', 'merge_planned', 'error')
+          )::int as open_count,
+          count(*) filter (
+            where status in ('new', 'reviewing', 'merge_planned', 'error')
+              and coalesce(first_seen_at, created_at) <= now() - ({threshold_days}::int * interval '1 day')
+          )::int as stale_count,
+          coalesce(max(extract(day from now() - coalesce(first_seen_at, created_at))) filter (
+            where status in ('new', 'reviewing', 'merge_planned', 'error')
+          ), 0)::int as oldest_open_days
+        from public.artist_duplicate_candidates
+        """
+    )
+    row = rows[0] if rows else {}
+    return {
+        "open_count": int(row.get("open_count") or 0),
+        "stale_count": int(row.get("stale_count") or 0),
+        "oldest_open_days": int(row.get("oldest_open_days") or 0),
+        "stale_threshold_days": threshold_days,
+    }
+
+def build_alert(scan_run_id: int, status: str, stats: dict[str, int] | None = None, error_message: str | None = None) -> dict[str, str]:
+    stats = stats or {}
+    warning_threshold = env_int("ARTIST_DUPLICATE_ALERT_WARNING_THRESHOLD", 25)
+    stale_alert_enabled = env_bool("ARTIST_DUPLICATE_STALE_ALERT_ENABLED", True)
+    stale_alert_threshold = max(1, env_int("ARTIST_DUPLICATE_STALE_ALERT_THRESHOLD", 1))
+    inserted = int(stats.get("inserted", 0))
+    updated = int(stats.get("updated_existing", 0))
+    skipped = int(stats.get("skipped_reviewed", 0))
+    found = int(stats.get("found", 0))
+    open_count = int(stats.get("open_count", 0))
+    stale_count = int(stats.get("stale_count", 0))
+    oldest_open_days = int(stats.get("oldest_open_days", 0))
+    stale_threshold_days = int(stats.get("stale_threshold_days", env_int("ARTIST_DUPLICATE_STALE_REVIEW_DAYS", 14)))
+    active_count = inserted + updated
+
+    if status == "failed":
+        return {
+            "severity": "danger",
+            "title": "Artiesten duplicate scan mislukt",
+            "body": f"Scan-run {scan_run_id} is mislukt. Fout: {error_message or 'onbekend'}",
+        }
+
+    has_stale_warning = stale_alert_enabled and stale_count >= stale_alert_threshold
+    severity = "warning" if active_count >= warning_threshold or has_stale_warning else "info"
     title = "Artiesten duplicate scan afgerond"
-    body = f"Scan-run {scan_run_id} heeft {candidate_count} mogelijke dubbele artiesten gevonden."
+    if has_stale_warning:
+        title = "Artiesten duplicate scan afgerond: open reviewqueue vereist aandacht"
+    body = (
+        f"Scan-run {scan_run_id} is afgerond. "
+        f"Gevonden: {found}; nieuw: {inserted}; bestaand bijgewerkt: {updated}; "
+        f"overgeslagen door reviewstatus: {skipped}. "
+        f"Open reviewqueue: {open_count}; te lang open: {stale_count} "
+        f"(drempel {stale_threshold_days} dagen); oudste open candidate: {oldest_open_days} dagen."
+    )
+    return {"severity": severity, "title": title, "body": body}
+
+
+def write_alert(db: PsqlDocker, scan_run_id: int, status: str, stats: dict[str, int] | None = None, error_message: str | None = None) -> None:
+    alert = build_alert(scan_run_id, status, stats, error_message)
     sql = f"""
       insert into public.alerts(app_key, module_key, title, body, severity, status)
-      values ('artist'::text, 'artist-duplicate-scanner'::text, {sql_quote(title)}::text, {sql_quote(body)}::text, {sql_quote(severity)}::text, 'open'::text);
+      values ('artist'::text, 'artist-duplicate-scanner'::text, {sql_quote(alert['title'])}::text, {sql_quote(alert['body'])}::text, {sql_quote(alert['severity'])}::text, 'open'::text);
     """
     db.run(sql)
+
+
+def maybe_write_alert(db: PsqlDocker, logger: ScannerLogger, scan_run_id: int, status: str, stats: dict[str, int] | None = None, error_message: str | None = None, force: bool = False) -> None:
+    if not env_bool("ARTIST_DUPLICATE_ALERT_ENABLED", True):
+        logger.info("artist_duplicate_scan.alert_skipped_disabled", scan_run_id=scan_run_id, status=status)
+        return
+    stats = stats or {}
+    active_count = int(stats.get("inserted", 0)) + int(stats.get("updated_existing", 0))
+    if status == "completed" and active_count == 0 and not force:
+        logger.info("artist_duplicate_scan.alert_skipped_no_active_candidates", scan_run_id=scan_run_id)
+        return
+    try:
+        write_alert(db, scan_run_id, status, stats, error_message)
+        logger.info("artist_duplicate_scan.alert_written", scan_run_id=scan_run_id, status=status)
+    except Exception as alert_exc:  # noqa: BLE001 - alert failure must not fail the scan itself
+        logger.warn("artist_duplicate_scan.alert_failed", scan_run_id=scan_run_id, status=status, error=str(alert_exc))
 
 
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
@@ -553,6 +654,12 @@ def main(argv: Iterable[str]) -> int:
 
         scan_run_id = create_scan_run(db, args, log_file)
         stats = persist_candidates(db, scan_run_id, candidates, logger)
+        try:
+            stale_stats = fetch_stale_review_stats(db)
+            stats.update(stale_stats)
+            logger.info("artist_duplicate_scan.reviewqueue_stats", **stale_stats)
+        except Exception as stats_exc:  # noqa: BLE001 - stale stats must not fail the scan
+            logger.warn("artist_duplicate_scan.reviewqueue_stats_failed", error=str(stats_exc))
         active_count = stats["inserted"] + stats["updated_existing"]
         complete_scan_run(
             db,
@@ -565,7 +672,7 @@ def main(argv: Iterable[str]) -> int:
             candidates_skipped_reviewed=stats["skipped_reviewed"],
         )
         if not args.no_alert:
-            write_alert(db, scan_run_id, active_count)
+            maybe_write_alert(db, logger, scan_run_id, "completed", stats)
         logger.info("artist_duplicate_scan.completed", scan_run_id=scan_run_id, log_file=str(log_file), **stats)
         return 0
     except Exception as exc:  # noqa: BLE001 - script boundary: log and mark failed run
@@ -575,6 +682,8 @@ def main(argv: Iterable[str]) -> int:
                 complete_scan_run(db, scan_run_id, "failed", 0, str(exc))
             except Exception as update_exc:  # noqa: BLE001
                 logger.error("artist_duplicate_scan.failed_status_update_failed", error=str(update_exc), scan_run_id=scan_run_id)
+            if not args.no_alert:
+                maybe_write_alert(db, logger, scan_run_id, "failed", {}, str(exc), force=True)
         return 1
 
 
