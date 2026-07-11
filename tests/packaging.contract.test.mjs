@@ -36,7 +36,7 @@ test('gitignore protects local config, logs, dependencies and release noise', ()
 
 test('release packaging script excludes local-only artifacts', () => {
   const script = read('scripts/make-release-zip.sh');
-  for (const excluded of ['node_modules/*', 'client/node_modules/*', '.git/*', '.env', '.sample.env', '.env.sample', 'logs/*', 'config/config.js', '.DS_Store', '__MACOSX/*', '*.woff', '*.woff2', '*.ttf', '*.otf']) {
+  for (const excluded of ['node_modules/*', 'client/node_modules/*', '.git/*', '.env', '.sample.env', '.env.sample', 'logs/*', 'config/config.js', '.DS_Store', '__MACOSX/*', '._*', '*/._*', '*.woff', '*.woff2', '*.ttf', '*.otf']) {
     assert.ok(script.includes(excluded), `release script should exclude ${excluded}`);
   }
 });

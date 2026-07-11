@@ -92,8 +92,17 @@
     "db:migrate:art012d4:fix2": "bash scripts/db-migrate-art012d4-fix1-docker.sh",
     "test:art012d4:fix2": "node --test tests/art012d4Fix1NameProposalReviewQueueHardening.contract.test.mjs",
     "db:migrate:art013a": "bash scripts/db-migrate-art013a-docker.sh",
-    "test:art013a": "node --test tests/art013aArtistMusicianSync.contract.test.mjs",
-    "test:artuidate1:fix1": "node --test tests/artUiDate1Fix1DatepickerPopover.contract.test.mjs"
+    "test:art013a": "node --test tests/art013aArtistMusicianSync.contract.test.mjs tests/art013a1MusicianBackfill.contract.test.mjs tests/art013a2DatabaseHardening.contract.test.mjs tests/art013a2FunctionalCases.contract.test.mjs",
+    "test:artuidate1:fix1": "node --test tests/artUiDate1Fix1DatepickerPopover.contract.test.mjs",
+    "db:migrate:art013a1": "bash scripts/db-migrate-art013a1-docker.sh",
+    "musician:backfill:preview": "bash scripts/backfill-musicians-from-person-artists.sh --preview",
+    "musician:backfill": "bash scripts/backfill-musicians-from-person-artists.sh --execute",
+    "test:art013a1": "node --test tests/art013a1MusicianBackfill.contract.test.mjs",
+    "musician:preflight": "bash scripts/musician-preflight.sh",
+    "musician:verify": "bash scripts/musician-verify.sh",
+    "test:art013a2:contract": "node --test tests/art013a2DatabaseHardening.contract.test.mjs tests/art013a2FunctionalCases.contract.test.mjs",
+    "test:art013a2:db": "bash scripts/db-test-art013a2-docker.sh",
+    "test:art013a2": "npm run test:art013a2:contract && npm run test:art013a2:db"
   },
   "dependencies": {
     "cors": "^2.8.5",

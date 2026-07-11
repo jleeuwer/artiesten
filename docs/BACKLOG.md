@@ -1127,3 +1127,91 @@ Gesynchroniseerde velden: naam, geboortedatum, sterfdatum en website. Notes, fav
 
 
 ART-013A ontwerpnotitie: er is geen automatische aanmaak van musician-records.
+
+---
+
+## ART-013A-1 — Idempotente musician backfill vanuit person artists
+
+Status: opgeleverd in `artist-art013a1-musician-backfill-20260609.zip`.
+
+### Doel
+
+De `musician`-tabel kan leeg zijn terwijl ART-013A alleen bestaande gekoppelde musicians synchroniseert. ART-013A-1 vult ontbrekende musicians vanuit artists met `ar_artist_type = 'person'`.
+
+### Regels
+
+- Alleen `person` artists worden meegenomen.
+- Alleen artists zonder gekoppelde musician worden toegevoegd.
+- Gekoppeld betekent: `musician.ar_artist_key = artist.ar_artist_key`.
+- Backfill is idempotent en kan periodiek worden uitgevoerd.
+- Bestaande musicians worden niet overschreven.
+- Geen automatische aanmaak via trigger.
+- Geen bidirectionele sync.
+- Geen delete- of merge-sync.
+
+### Scripts
+
+```bash
+mkdir -p logs && npm run db:migrate:art013a1 2>&1 | tee "logs/db-migrate-art013a1-$(date +%Y%m%d-%H%M%S).log"
+mkdir -p logs && npm run musician:backfill:preview 2>&1 | tee "logs/musician-backfill-preview-$(date +%Y%m%d-%H%M%S).log"
+mkdir -p logs && npm run musician:backfill 2>&1 | tee "logs/musician-backfill-$(date +%Y%m%d-%H%M%S).log"
+mkdir -p logs && npm run test:art013a1 2>&1 | tee "logs/test-art013a1-$(date +%Y%m%d-%H%M%S).log"
+```
+
+---
+
+## ART-013A-2 — Artist/Musician databasevalidatie en backfill-hardening
+
+**Prioriteit:** hoogste eerstvolgende sprint  
+**Status:** functioneel en technisch uitgewerkt; nog te implementeren
+
+### Doel
+
+De reeds opgeleverde ART-013A-trigger en ART-013A-1-backfill veilig en aantoonbaar valideren tegen de werkelijke Docker/PostgreSQL-database voordat nieuwe relationele functionaliteit wordt toegevoegd.
+
+### Scope
+
+- read-only preflight;
+- schema-, kolom-, datatype- en constraintchecks;
+- duplicate-link-detectie vóór unique index;
+- blocker/warning/info-classificatie;
+- veilige migratieguard;
+- verbeterde preview en execute-summary;
+- `npm run musician:verify`;
+- idempotentiecontrole;
+- geïsoleerde database-integratietests;
+- productieguard en cleanup;
+- logging en packaging-hardening.
+
+### Acceptatiekern
+
+- preflight meldt nul onverwachte blockers;
+- migratie en backfill slagen op Docker PostgreSQL;
+- tweede backfill-run voegt nul records toe;
+- person-update synchroniseert gekoppelde musician;
+- band/group en ongekoppelde person veroorzaken geen sync/insert;
+- musician→artist bestaat niet;
+- delete/merge/deactiveren verwijdert musician niet;
+- verificatie meldt geen onverwachte duplicates, missing links of orphans;
+- release-ZIP bevat geen secrets, runtime-artifacts of macOS metadata.
+
+Zie:
+
+- `docs/ART_013A_2_Databasevalidatie_Backfill_Hardening_Functioneel_Technisch_Ontwerp.md`
+- `docs/ART_013A_2_Testcases_en_Runbook.md`
+
+## Bevestigde vervolgvolgorde
+
+1. ART-013A-2 implementeren en functioneel accepteren.
+2. ART-UI-Polish: profielfoto-thumbnail en overleden-indicator.
+3. ART-012D-4 volledig functioneel valideren en eventuele fixes uitvoeren.
+4. ART-013B: `musician_in_band` uitbreiden met rol, periode en bron.
+5. Lokale bewerkbare biografie ontwerpen naast externe profieltekst en beheer-notities.
+6. ART-014 album/release/track-datamodel.
+
+
+## ART-013A-2 — Databasevalidatie en backfill-hardening (2026-07-11)
+
+Status: **geïmplementeerd; lokale database-acceptatie open**.
+
+Opgeleverd: centrale preflight, geharde migratie, veilige preview/execute, verificatie, transactionele database-integratietest, contracttests en bijgewerkt runbook. De eerstvolgende afgesproken volgorde na acceptatie blijft: ART-UI-Polish, ART-012D-4 validatie/fixes, ART-013B, lokale biografie en ART-014.

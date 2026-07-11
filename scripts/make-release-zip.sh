@@ -26,6 +26,8 @@ zip -qr "${OUT_FILE}" . \
   -x ".DS_Store" \
   -x "*/.DS_Store" \
   -x "__MACOSX/*" \
+  -x "._*" \
+  -x "*/._*" \
   -x "*.zip" \
   -x "*.tar.gz" \
   -x "*.tgz" \

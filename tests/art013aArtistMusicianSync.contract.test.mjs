@@ -47,7 +47,7 @@ test('ART-013A trigger is not bidirectional and does not sync deletes or merges'
 
 test('ART-013A package script and docker migration script are present', () => {
   assert.equal(pkg.scripts['db:migrate:art013a'], 'bash scripts/db-migrate-art013a-docker.sh');
-  assert.equal(pkg.scripts['test:art013a'], 'node --test tests/art013aArtistMusicianSync.contract.test.mjs');
+  assert.match(pkg.scripts['test:art013a'], /tests\/art013aArtistMusicianSync\.contract\.test\.mjs/);
   assert.match(migrate, /20260609_art013a_artist_to_musician_sync\.sql/);
   assert.match(migrate, /ARTIST_DB_CONTAINER/);
   assert.match(migrate, /docker exec -i/);

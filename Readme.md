@@ -1006,3 +1006,60 @@ mkdir -p logs && npm run test:art013a 2>&1 | tee "logs/test-art013a-$(date +%Y%m
 ```
 
 De synchronisatie is nooit bidirectioneel en maakt geen musician-records automatisch aan.
+
+## ART-013A-1 — Musician backfill vanuit person artists
+
+ART-013A synchroniseert bestaande gekoppelde musicians bij een update van een `person` artist. Als de `musician`-tabel leeg is, kan ART-013A-1 worden gebruikt om ontbrekende musician-records idempotent aan te maken vanuit artists met `ar_artist_type = 'person'`.
+
+Migratie:
+
+```bash
+mkdir -p logs && npm run db:migrate:art013a1 2>&1 | tee "logs/db-migrate-art013a1-$(date +%Y%m%d-%H%M%S).log"
+```
+
+Preview:
+
+```bash
+mkdir -p logs && npm run musician:backfill:preview 2>&1 | tee "logs/musician-backfill-preview-$(date +%Y%m%d-%H%M%S).log"
+```
+
+Uitvoeren:
+
+```bash
+mkdir -p logs && npm run musician:backfill 2>&1 | tee "logs/musician-backfill-$(date +%Y%m%d-%H%M%S).log"
+```
+
+Tests:
+
+```bash
+mkdir -p logs && npm run test:art013a1 2>&1 | tee "logs/test-art013a1-$(date +%Y%m%d-%H%M%S).log"
+```
+
+---
+
+## Geplande volgende sprint: ART-013A-2
+
+ART-013A-2 is functioneel en technisch uitgewerkt als databasevalidatie- en hardeningsprint voor de artist→musician-keten.
+
+Geplande commando's na implementatie:
+
+```bash
+mkdir -p logs && npm run musician:preflight 2>&1 | tee "logs/musician-preflight-$(date +%Y%m%d-%H%M%S).log"
+```
+
+```bash
+mkdir -p logs && npm run musician:verify 2>&1 | tee "logs/musician-verify-$(date +%Y%m%d-%H%M%S).log"
+```
+
+```bash
+mkdir -p logs && npm run test:art013a2 2>&1 | tee "logs/test-art013a2-$(date +%Y%m%d-%H%M%S).log"
+```
+
+Deze scripts zijn in deze documentatiesprint nog niet geïmplementeerd. Zie het functioneel/technisch ontwerp en het test-runbook in `docs/`.
+
+
+## ART-013A-2 — Databasevalidatie en backfill-hardening (2026-07-11)
+
+Status: **geïmplementeerd; lokale database-acceptatie open**.
+
+Opgeleverd: centrale preflight, geharde migratie, veilige preview/execute, verificatie, transactionele database-integratietest, contracttests en bijgewerkt runbook. De eerstvolgende afgesproken volgorde na acceptatie blijft: ART-UI-Polish, ART-012D-4 validatie/fixes, ART-013B, lokale biografie en ART-014.
