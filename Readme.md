@@ -1063,3 +1063,56 @@ Deze scripts zijn in deze documentatiesprint nog niet geïmplementeerd. Zie het 
 Status: **geïmplementeerd; lokale database-acceptatie open**.
 
 Opgeleverd: centrale preflight, geharde migratie, veilige preview/execute, verificatie, transactionele database-integratietest, contracttests en bijgewerkt runbook. De eerstvolgende afgesproken volgorde na acceptatie blijft: ART-UI-Polish, ART-012D-4 validatie/fixes, ART-013B, lokale biografie en ART-014.
+
+## Volgende sprint — ART-UI-POLISH-1
+
+De volgende codesprint voegt een compacte primaire profielfoto en overleden-indicator toe aan de artiestenlijst.
+
+Ontwerp en testbasis:
+
+```text
+docs/ART_UI_POLISH_1_Thumbnail_Overleden_Indicator_Functioneel_Technisch_Ontwerp.md
+docs/ART_UI_POLISH_1_Testcases_en_Runbook.md
+docs/ART_UI_POLISH_1_Sprint_Manifest.md
+```
+
+Belangrijkste technische uitgangspunten:
+
+- maximaal één `primary_image_url` in de bestaande artist list response;
+- geen N+1-query en geen image-API-call per rij;
+- vaste thumbnailmaat van 28–32 px;
+- lokale fallback bij ontbrekende of defecte externe image;
+- overledenstatus afgeleid van `ar_artist_passing`;
+- directe list refresh na primary-image-wijziging;
+- Chromium als browser voor geautomatiseerde end-to-endtests.
+
+De productiecode voor deze sprint is in deze ontwerpoplevering nog niet gewijzigd.
+
+## ART-UI-POLISH-1 — compacte profielvisual in artiestenlijst
+
+De artiestenlijst toont links per rij:
+
+- de primaire Discogs-profielfoto als 32×32 thumbnail;
+- een lokale fallback-avatar wanneer geen image beschikbaar is of laden mislukt;
+- een hourglass-indicator met de toegankelijke tekst `Artiest overleden` wanneer `ar_artist_passing` gevuld is.
+
+De image wordt via de bestaande artist list query geleverd; er is geen request of SQL-query per tabelrij. Na het kiezen van een andere primaire Discogs-image worden lijst- en selectiestate direct bijgewerkt.
+
+Tests uitvoeren:
+
+```bash
+mkdir -p logs && npm run test:art-ui-polish1 2>&1 | tee "logs/art-ui-polish1-$(date +%Y%m%d-%H%M%S).log"
+```
+
+## ART-UI-POLISH-1-Fix-2 — overledenindicator
+
+De overledenstatus gebruikt vanaf Fix-2 een ingebouwd SVG-hourglass en is niet meer afhankelijk van een extern icon-font. De indicator wordt getoond in de artiestentabel, het vaste Relatie-inzicht en de detail-Offcanvas wanneer `ar_artist_passing` gevuld is.
+
+Testen:
+
+```bash
+mkdir -p logs && npm run test:art-ui-polish1 2>&1 | tee "logs/art-ui-polish1-$(date +%Y%m%d-%H%M%S).log"
+```
+
+## ART-UI-POLISH-1-Fix-3 (2026-07-11)
+Het daadwerkelijke Edit-scherm toont nu een zichtbare overledenbadge met inline SVG-hourglass, gekoppeld aan het actuele sterfdatumveld. Zie `docs/releases/ART-UI-POLISH-1-FIX-3.md`.

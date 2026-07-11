@@ -1,0 +1,850 @@
+
+:root {
+  --artist-bg: #ffffff;
+  --artist-panel: #ffffff;
+  --artist-surface: #f8fafc;
+  --artist-text: #0f172a;
+  --artist-muted: #64748b;
+  --artist-border: rgba(15, 23, 42, 0.12);
+  --artist-accent: #2563eb;
+  --artist-accent-strong: #1d4ed8;
+}
+
+.artist-app-root {
+  color: var(--artist-text);
+}
+
+.artist-app-root a {
+  color: var(--artist-accent-strong);
+}
+
+.artist-page-surface {
+  background: var(--artist-panel);
+  border: 1px solid var(--artist-border);
+  border-radius: 1rem;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  padding: 1.25rem;
+  overflow: visible;
+}
+
+.artist-theme-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--artist-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--artist-accent) 28%, transparent);
+  color: var(--artist-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.artist-app-root[data-shell-mode='true'] {
+  background: transparent;
+}
+
+.artist-app-root[data-shell-mode='true'] .artist-page-surface {
+  border-radius: 0.85rem;
+}
+
+.artist-app-root[data-theme='slate'] {
+  --artist-bg: #0f172a;
+  --artist-panel: #162033;
+  --artist-surface: #111827;
+  --artist-text: #e5eefb;
+  --artist-muted: #9fb0c7;
+  --artist-border: rgba(148, 163, 184, 0.22);
+  --artist-accent: #38bdf8;
+  --artist-accent-strong: #7dd3fc;
+}
+
+.artist-app-root[data-theme='light'] {
+  --artist-bg: #f8fafc;
+  --artist-panel: #ffffff;
+  --artist-surface: #ffffff;
+  --artist-text: #0f172a;
+  --artist-muted: #475569;
+  --artist-border: rgba(15, 23, 42, 0.14);
+  --artist-accent: #2563eb;
+  --artist-accent-strong: #1d4ed8;
+}
+
+.artist-app-root[data-theme='teal'] {
+  --artist-bg: #0f1f22;
+  --artist-panel: #123036;
+  --artist-surface: #0d262b;
+  --artist-text: #e6fffb;
+  --artist-muted: #9dd4cf;
+  --artist-border: rgba(45, 212, 191, 0.2);
+  --artist-accent: #14b8a6;
+  --artist-accent-strong: #5eead4;
+}
+
+.artist-app-root[data-theme='rose-dark'] {
+  --artist-bg: #260f1f;
+  --artist-panel: #3a1730;
+  --artist-surface: #311329;
+  --artist-text: #ffe5f1;
+  --artist-muted: #f6b7d0;
+  --artist-border: rgba(244, 114, 182, 0.26);
+  --artist-accent: #f472b6;
+  --artist-accent-strong: #f9a8d4;
+}
+
+.artist-app-root[data-theme='pastel-light'] {
+  --artist-bg: #fffafc;
+  --artist-panel: #ffffff;
+  --artist-surface: #ffffff;
+  --artist-text: #4a3340;
+  --artist-muted: #7b6471;
+  --artist-border: rgba(236, 72, 153, 0.14);
+  --artist-accent: #f9a8d4;
+  --artist-accent-strong: #c084fc;
+}
+
+.artist-app-root[data-theme='rainbow-accent'] {
+  --artist-bg: #10111a;
+  --artist-panel: #17192a;
+  --artist-surface: #131523;
+  --artist-text: #edf2ff;
+  --artist-muted: #b9c3e6;
+  --artist-border: rgba(148, 163, 184, 0.2);
+  --artist-accent: #8b5cf6;
+  --artist-accent-strong: #ec4899;
+}
+
+
+.artist-app-root {
+  min-height: 100vh;
+  background: var(--artist-bg);
+}
+
+.artist-shell-module-host {
+  width: 100%;
+}
+
+.artist-app-root.artist-shell-embedded {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.artist-app-root[data-shell-mode='true'] .artist-page-surface {
+  border-radius: 0.85rem;
+}
+
+.artist-app-root[data-shell-embedded='true'] {
+  min-height: auto;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin: 0 !important;
+}
+
+.artist-app-root[data-shell-embedded='true'] .artist-page-surface {
+  border-radius: 0;
+  box-shadow: none;
+  border-left: 0;
+  border-right: 0;
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.artist-app-root[data-shell-embedded='true'] .artist-shell-meta-row {
+  margin-bottom: 1rem;
+}
+
+.artist-app-root[data-shell-embedded='true'] .artist-table-wrap {
+  margin-bottom: 0;
+}
+
+.artist-app-root[data-shell-embedded='true'] .d-flex.justify-content-between.align-items-center.mt-3.gap-2.flex-wrap {
+  margin-bottom: 0;
+}
+
+.artist-table-wrap {
+  background: color-mix(in srgb, var(--artist-surface) 88%, transparent);
+}
+
+.artist-form-modal {
+  z-index: 1060;
+}
+
+.artist-form-modal-dialog {
+  margin: 1rem auto;
+  width: min(1280px, calc(100vw - 2rem));
+  max-width: min(1280px, calc(100vw - 2rem));
+}
+
+.artist-form-modal-content {
+  max-height: calc(100vh - 2rem);
+}
+
+.artist-form-modal .modal-body {
+  overflow-y: auto;
+  max-height: calc(100vh - 12rem);
+}
+
+
+.artist-app-root[data-shell-embedded='true'] .offcanvas-body {
+  padding-bottom: 0.5rem;
+}
+
+/* ART Sprint 6 - relatie-inzicht, gewicht en favorieten */
+.artist-toolbar {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(12rem, 18rem) minmax(14rem, 18rem) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.artist-toolbar-search {
+  min-width: 0;
+}
+
+.artist-toolbar-favorite {
+  white-space: nowrap;
+}
+
+.artist-favorite-button {
+  min-width: 2.25rem;
+}
+
+.artist-selected-row > td {
+  background: color-mix(in srgb, var(--artist-accent) 12%, transparent) !important;
+}
+
+.artist-relation-panel {
+  border: 1px solid var(--artist-border);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--artist-surface) 94%, transparent);
+  padding: 1rem;
+  max-height: min(76vh, 64rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scroll-padding-top: 1rem;
+}
+
+.artist-relation-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.artist-relation-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.35fr) minmax(14rem, 0.75fr) minmax(14rem, 0.75fr) minmax(16rem, 0.95fr);
+  gap: 0.85rem;
+}
+
+.artist-relation-card {
+  border: 1px solid var(--artist-border);
+  border-radius: 0.75rem;
+  background: var(--artist-panel);
+  padding: 0.85rem;
+  min-width: 0;
+}
+
+.artist-relation-table-scroll {
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.artist-relation-card table {
+  font-size: 0.84rem;
+}
+
+.artist-relation-card td,
+.artist-relation-card th {
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .artist-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .artist-relation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .artist-relation-header {
+    flex-direction: column;
+  }
+}
+
+/* ART Sprint 6 Fix - unieke titels, navigatie en edit-relatiepanelen */
+.artist-relation-panel:focus {
+  outline: 3px solid color-mix(in srgb, var(--artist-accent) 35%, transparent);
+  outline-offset: 3px;
+}
+
+.artist-relation-panel-loaded {
+  animation: artistRelationPulse 900ms ease-out 1;
+}
+
+@keyframes artistRelationPulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--artist-accent) 30%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 12px color-mix(in srgb, var(--artist-accent) 0%, transparent);
+  }
+}
+
+.artist-selected-row:focus > td {
+  outline: 2px solid color-mix(in srgb, var(--artist-accent) 35%, transparent);
+  outline-offset: -2px;
+}
+
+.artist-edit-relation-panel {
+  padding: 0.85rem;
+  background: color-mix(in srgb, var(--artist-surface) 88%, transparent);
+}
+
+.artist-relation-grid-compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.artist-relation-grid-compact .artist-relation-table-scroll {
+  max-height: 12rem;
+}
+
+.artist-relation-grid-compact .artist-relation-card {
+  padding: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .artist-relation-grid-compact {
+    grid-template-columns: 1fr;
+  }
+}
+
+.artist-duplicate-panel {
+  border: 1px solid var(--artist-border);
+  background: color-mix(in srgb, var(--artist-accent) 5%, var(--artist-panel));
+  border-radius: 0.85rem;
+  padding: 1rem;
+}
+
+.artist-impact-offcanvas .offcanvas-body {
+  background: var(--artist-panel);
+  color: var(--artist-text);
+}
+
+/* ART-015C-2-Fix-1: Bootstrap Icons-compatible favorite star fallback.
+   The favorite button keeps Bootstrap Icons class names, while the glyph is
+   rendered from CSS so the release ZIP does not need to ship icon font files. */
+.artist-favorite-button .bi {
+  display: inline-block;
+  width: 1em;
+  line-height: 1;
+  text-align: center;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.artist-favorite-button .bi-star::before {
+  content: "☆";
+}
+
+.artist-favorite-button .bi-star-fill::before {
+  content: "★";
+}
+
+/* ART-015C-3: mergehistorie en samengevoegde artiesten */
+.artist-merged-row > td {
+  background: color-mix(in srgb, #ffc107 9%, transparent) !important;
+}
+
+.artist-merged-alert {
+  border-style: dashed;
+}
+
+.artist-merge-history-card {
+  background: color-mix(in srgb, var(--artist-panel) 92%, #ffc107 8%);
+}
+
+
+
+/* ART-015C-3-Fix-4: merge history table readability.
+   The horizontal scrollbar receives room below the table and long impact
+   details wrap as chips instead of pushing the row into an unreadable line. */
+.artist-merge-history-table-wrap {
+  padding-bottom: 1.25rem;
+  scrollbar-gutter: stable both-edges;
+}
+
+.artist-merge-history-table {
+  min-width: 42rem;
+}
+
+.artist-merge-history-table td,
+.artist-merge-history-table th {
+  white-space: normal;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.artist-merge-history-impact-cell {
+  min-width: 13rem;
+}
+
+.artist-merge-history-impact-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.artist-merge-history-impact-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--artist-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--artist-surface) 86%, transparent);
+  color: var(--artist-text);
+  line-height: 1.35;
+}
+
+.artist-merge-history-impact-chip strong {
+  font-weight: 700;
+}
+
+.artist-toolbar-merge-status {
+  min-width: 14rem;
+}
+
+.artist-reviewqueue-offcanvas {
+  --bs-offcanvas-width: min(760px, 96vw);
+}
+
+.artist-reviewqueue-card {
+  background: var(--artist-panel);
+}
+
+.artist-reviewqueue-pair {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.artist-reviewqueue-filters {
+  color: var(--artist-text);
+}
+
+/* ART-015D-3C: stale duplicate reviewqueue candidates must be visible. */
+.artist-reviewqueue-stale-alert {
+  border-left: 0.35rem solid var(--bs-warning);
+}
+
+/* ART-012B-Fix-1: Discogs search results readability.
+   The Discogs card spans the full relation grid so the action column remains
+   clickable in Shellstarter/embedded layouts. The result table uses a
+   scroll-safe wrapper, explicit action column width and wrapping title cell. */
+.artist-relation-grid > .artist-discogs-card {
+  grid-column: 1 / -1;
+}
+
+.artist-discogs-card {
+  overflow: hidden;
+}
+
+.artist-discogs-results-wrap {
+  width: 100%;
+  max-height: 22rem;
+  overflow-x: auto;
+  overflow-y: auto;
+  padding-right: 0.75rem;
+  padding-bottom: 1rem;
+  scrollbar-gutter: stable both-edges;
+}
+
+.artist-discogs-results-table {
+  min-width: 46rem;
+  table-layout: fixed;
+}
+
+.artist-discogs-results-table th,
+.artist-discogs-results-table td {
+  white-space: normal;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.artist-discogs-results-table th:first-child,
+.artist-discogs-results-table td:first-child {
+  width: 48%;
+}
+
+.artist-discogs-id-cell {
+  width: 9rem;
+}
+
+.artist-discogs-source-cell {
+  width: 7rem;
+}
+
+.artist-discogs-action-col {
+  width: 8rem;
+  min-width: 8rem;
+  white-space: nowrap !important;
+}
+
+.artist-discogs-detail-button {
+  min-width: 5.5rem;
+}
+
+
+/* ART-012E-1: Discogs linked indicator and artist type foundation. */
+.artist-discogs-link-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  border-radius: 999px;
+  color: var(--artist-accent-strong);
+  background: color-mix(in srgb, var(--artist-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--artist-accent) 24%, transparent);
+}
+
+.artist-discogs-link-indicator .bi,
+.artist-relation-header .bi-link {
+  display: inline-block;
+  width: 1em;
+  line-height: 1;
+  text-align: center;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.artist-discogs-link-indicator .bi-link::before,
+.artist-relation-header .bi-link::before {
+  content: "🔗";
+}
+
+/* ART-012E-2: primary artist profile photo selected from Discogs images. */
+.artist-profile-image {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  object-fit: cover;
+  background: color-mix(in srgb, var(--artist-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--artist-accent) 24%, transparent);
+  color: var(--artist-muted);
+}
+
+.artist-profile-image-small {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.artist-profile-image-empty .bi::before {
+  content: "👤";
+}
+
+.artist-discogs-profile-images {
+  background: color-mix(in srgb, var(--artist-surface) 92%, transparent);
+}
+
+.artist-discogs-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.75rem;
+  max-height: 28rem;
+  overflow: auto;
+  padding: 0.25rem;
+}
+
+.artist-discogs-image-card {
+  border: 1px solid var(--artist-border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--artist-surface);
+}
+
+.artist-discogs-image-card-primary {
+  border-color: var(--artist-accent-strong);
+  box-shadow: 0 0 0 0.125rem color-mix(in srgb, var(--artist-accent) 18%, transparent);
+}
+
+.artist-discogs-image-card img {
+  display: block;
+  width: 100%;
+  height: 8.5rem;
+  object-fit: cover;
+  background: color-mix(in srgb, var(--artist-accent) 8%, transparent);
+}
+
+.artist-discogs-image-meta {
+  padding: 0.5rem;
+}
+
+/* ART-012E-2-Fix-1: repeat the relation/profile header in the edit modal. */
+.artist-edit-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem;
+  border: 1px solid var(--artist-border);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--artist-surface) 92%, transparent);
+}
+
+.artist-edit-profile-header .bi-link {
+  font-style: normal;
+}
+
+.artist-edit-profile-header .bi-link::before {
+  content: "🔗";
+}
+
+.artist-discogs-enrichment-preview {
+  background: rgba(13, 110, 253, 0.03);
+}
+
+.artist-discogs-enrichment-table td,
+.artist-discogs-enrichment-table th {
+  vertical-align: top;
+}
+
+/* ART-012E-3-Fix-1: keep long Discogs URLs from widening the enrichment preview table. */
+.artist-discogs-enrichment-preview {
+  overflow: hidden;
+}
+
+.artist-discogs-enrichment-preview .artist-relation-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-gutter: stable both-edges;
+}
+
+.artist-discogs-enrichment-table {
+  width: 100%;
+  min-width: 64rem;
+  table-layout: fixed;
+}
+
+.artist-discogs-enrichment-table th,
+.artist-discogs-enrichment-table td {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.artist-discogs-enrichment-table th:nth-child(1),
+.artist-discogs-enrichment-table td:nth-child(1) { width: 12rem; }
+.artist-discogs-enrichment-table th:nth-child(2),
+.artist-discogs-enrichment-table td:nth-child(2) { width: 11rem; }
+.artist-discogs-enrichment-table th:nth-child(3),
+.artist-discogs-enrichment-table td:nth-child(3) { width: 14rem; }
+.artist-discogs-enrichment-table th:nth-child(4),
+.artist-discogs-enrichment-table td:nth-child(4) { width: 8rem; }
+.artist-discogs-enrichment-table th:nth-child(5),
+.artist-discogs-enrichment-table td:nth-child(5) { width: 8rem; }
+.artist-discogs-enrichment-table th:nth-child(6),
+.artist-discogs-enrichment-table td:nth-child(6) { width: 18rem; }
+.artist-discogs-enrichment-table th:nth-child(7),
+.artist-discogs-enrichment-table td:nth-child(7) { width: 10rem; }
+
+.artist-discogs-enrichment-value {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artist-discogs-enrichment-url {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artist-discogs-enrichment-raw,
+.artist-discogs-enrichment-context {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ART-UI-Date-1-Fix-1: Dutch manual date input plus explicit in-app datepicker.
+   The visible value remains dd-mm-jjjj while the backend/API keep YYYY-MM-DD. */
+.artist-dutch-date-field {
+  position: relative;
+}
+
+.artist-date-input-group {
+  display: flex;
+  align-items: stretch;
+  gap: 0.35rem;
+  position: relative;
+}
+
+.artist-date-input-group .form-control {
+  min-width: 0;
+}
+
+.artist-date-picker-button {
+  flex: 0 0 auto;
+}
+
+.artist-date-picker-popover {
+  position: absolute;
+  z-index: 1065;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  width: min(30rem, 92vw);
+  padding: 0.75rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  background: var(--bs-body-bg);
+  box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.18);
+}
+
+.artist-date-picker-grid {
+  display: grid;
+  grid-template-columns: minmax(5rem, 0.8fr) minmax(9rem, 1.2fr) minmax(7rem, 1fr);
+  gap: 0.5rem;
+}
+
+@media (max-width: 576px) {
+  .artist-date-picker-popover {
+    position: static;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  .artist-date-picker-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ART-UI-1A: detail/edit UX foundation. */
+.artist-relation-section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.65rem 0;
+  margin: -0.25rem 0 0.85rem;
+  background: color-mix(in srgb, var(--artist-surface) 96%, transparent);
+  border-bottom: 1px solid var(--artist-border);
+}
+
+.artist-external-profile-preview {
+  background: color-mix(in srgb, var(--artist-panel) 96%, transparent);
+}
+
+.artist-external-profile-text {
+  max-height: 12rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  padding-right: 0.25rem;
+}
+
+.artist-form-modal.artist-form-modal .modal-xl {
+  width: min(1280px, calc(100vw - 2rem));
+  max-width: min(1280px, calc(100vw - 2rem));
+}
+
+
+/* ART-UI-POLISH-1 - compacte identiteit in de artiestenlijst */
+.artist-list-identity-cell {
+  width: 72px;
+  min-width: 72px;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  text-align: center;
+}
+
+.artist-list-identity-visual {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+.artist-list-status-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  min-width: 14px;
+  height: 32px;
+}
+
+.artist-deceased-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(var(--bs-danger-rgb), 0.35);
+  border-radius: 50%;
+  background: rgba(var(--bs-danger-rgb), 0.1);
+  color: var(--bs-danger-text-emphasis, var(--bs-danger));
+  font-size: 0.8rem;
+  cursor: help;
+}
+
+.artist-list-thumbnail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--bs-border-color);
+  background: var(--artist-surface, var(--bs-body-bg));
+  object-fit: cover;
+  overflow: hidden;
+  flex: 0 0 32px;
+}
+
+.artist-list-thumbnail-fallback {
+  color: var(--bs-secondary-color);
+  font-size: 1rem;
+}
+
+.artist-list-thumbnail-fallback .bi {
+  line-height: 1;
+}
+
+
+/* ART-UI-POLISH-1-Fix-1 - zichtbare overledenstatus in lijst en details */
+.artist-deceased-indicator-detail {
+  width: auto;
+  min-width: 0;
+  height: 24px;
+  padding: 0 0.45rem;
+  gap: 0.3rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.artist-deceased-indicator-detail .bi {
+  font-size: 0.8rem;
+}

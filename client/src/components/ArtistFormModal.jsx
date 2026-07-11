@@ -54,6 +54,42 @@ function datePayloadValue(value, label) {
   return dutchDateToIso(text);
 }
 
+
+function HourglassBottomIcon({ className = "" }) {
+  return (
+    <svg
+      className={`artist-hourglass-icon ${className}`.trim()}
+      viewBox="0 0 16 16"
+      width="16"
+      height="16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M3 1.5h10M3 14.5h10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M4 2.5c0 2.7 1.6 3.8 4 5-2.4 1.2-4 2.3-4 5h8c0-2.7-1.6-3.8-4-5 2.4-1.2 4-2.3 4-5H4Z" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M5.6 11.7c.75-1.05 1.45-1.48 2.4-2 .95.52 1.65.95 2.4 2H5.6Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function EditDeceasedStatusBadge({ passingDate }) {
+  const normalizedDate = String(passingDate || "").trim();
+  if (!normalizedDate) return null;
+  const displayDate = toDutchDateInputValue(normalizedDate) || normalizedDate;
+  const label = `Artiest overleden op ${displayDate}`;
+  return (
+    <span
+      className="artist-deceased-indicator artist-deceased-indicator-detail artist-edit-deceased-indicator"
+      title={label}
+      aria-label={label}
+      data-testid="artist-edit-deceased-indicator"
+    >
+      <HourglassBottomIcon />
+      <span>Overleden</span>
+    </span>
+  );
+}
+
 function flattenFieldErrors(details) {
   const fe = details?.fieldErrors || {};
   const out = [];
@@ -237,7 +273,7 @@ function DiscogsProfileImage({ image, size = "small" }) {
   );
 }
 
-function ArtistProfileHeader({ artist, relations, loading }) {
+function ArtistProfileHeader({ artist, relations, loading, passingDate }) {
   const primaryImage = relations?.primaryDiscogsImage || relations?.discogsImages?.find?.((image) => image.is_primary) || null;
   const source = relations?.artist || artist || {};
   const hasDiscogs = Boolean(source.has_discogs_link) || Boolean(relations?.discogsReferences?.some?.((ref) => String(ref.status || "").toLowerCase() === "linked"));
@@ -249,6 +285,7 @@ function ArtistProfileHeader({ artist, relations, loading }) {
         <div className="text-uppercase text-muted small fw-semibold">Artiestprofiel</div>
         <h3 className="h6 mb-1">{source.ar_artist_name || "Nieuwe artiest"}</h3>
         <div className="d-flex gap-2 flex-wrap align-items-center">
+          <EditDeceasedStatusBadge passingDate={passingDate || source.ar_artist_passing} />
           {hasDiscogs ? <Badge bg="success"><i className="bi bi-link me-1" aria-hidden="true"></i>Discogs gekoppeld</Badge> : <Badge bg="secondary">Geen Discogs-koppeling</Badge>}
           <Badge bg={source.ar_artist_type === "unknown" ? "secondary" : "light"} text={source.ar_artist_type === "unknown" ? undefined : "dark"}>Type: {artistTypeLabel(source.ar_artist_type)}</Badge>
           {relations?.artist ? <Badge bg="info">{countLabel(relations.artist.artist_weight, "unieke titel", "unieke titels")}</Badge> : null}
@@ -385,7 +422,7 @@ export default function ArtistFormModal({ show, mode, artist, onClose, onSave })
             </Alert>
           )}
 
-          {isEdit ? <ArtistProfileHeader artist={artist} relations={relations} loading={relationsLoading} /> : null}
+          {isEdit ? <ArtistProfileHeader artist={artist} relations={relations} loading={relationsLoading} passingDate={form.ar_artist_passing} /> : null}
 
           <Form.Group className="mb-3">
             <Form.Label>Name *</Form.Label>
