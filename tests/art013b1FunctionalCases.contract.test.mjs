@@ -1,0 +1,1 @@
+import test from "node:test";import assert from "node:assert/strict";import fs from "node:fs";const doc=fs.readFileSync(new URL("../docs/ART_013B_1_Testcases_en_Runbook.md",import.meta.url),"utf8");for(let i=1;i<=88;i++){const id=`ART013B1-TC-${String(i).padStart(3,"0")}`;test(`${id} blijft traceerbaar`,()=>assert.match(doc,new RegExp(id)));}

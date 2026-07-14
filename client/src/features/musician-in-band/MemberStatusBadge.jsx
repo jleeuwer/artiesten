@@ -1,0 +1,1 @@
+import React from "react";import { Badge } from "react-bootstrap";export default function MemberStatusBadge({status}){const current=status==="current";return <Badge bg={current?"success":"secondary"}>{current?"Huidig":"Voormalig"}</Badge>;}

@@ -1,0 +1,4 @@
+function text(v){if(v===undefined||v===null)return null;const s=String(v).trim();return s||null;}
+function date(v,label){const s=text(v);if(!s)return null;if(!/^\d{4}-\d{2}-\d{2}$/.test(s)){const e=new Error(`${label} moet YYYY-MM-DD zijn.`);e.statusCode=400;e.code='INVALID_MUSICIAN_DATE';throw e;}return s;}
+function normalizeMusicianPayload(body={}){const name=text(body.name??body.musicianName);if(!name){const e=new Error('Naam van musician is verplicht.');e.statusCode=400;e.code='MUSICIAN_NAME_REQUIRED';throw e;}return{name,dateOfBirth:date(body.dateOfBirth,'Geboortedatum'),passingDate:date(body.passingDate,'Sterfdatum'),websiteUrl:text(body.websiteUrl),notes:text(body.notes),artistKey:body.artistKey?Number(body.artistKey):null,allowDuplicate:Boolean(body.allowDuplicate)};}
+module.exports={normalizeMusicianPayload};

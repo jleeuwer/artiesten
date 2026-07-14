@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
+const read=(p)=>fs.readFileSync(p,'utf8');
+test('ART-013B-2 levert generieke proposal- en sourcetabellen',()=>{const s=read('scripts/sql/20260712_art013b2_discogs_band_member_proposals.sql');assert.match(s,/musician_in_band_proposal/);assert.match(s,/musician_in_band_source/);assert.match(s,/musicbrainz/);assert.match(s,/wikidata/)});
+test('Discogs provider normaliseert bandleden',()=>{const s=read('services/discogsBandMembersProvider.js');assert.match(s,/fetchBandMembers/);assert.match(s,/detail\.members/)});
+test('matching onderscheidt nieuwe musician, bestaande musician en bestaande relatie',()=>{const s=read('services/musicianInBandMatchingService.js');assert.match(s,/new_musician/);assert.match(s,/matched_musician/);assert.match(s,/matched_relation/)});
+test('acceptatie is transactioneel en schrijft bronhistorie',()=>{const s=read('services/musicianInBandProposalService.js');assert.match(s,/BEGIN/);assert.match(s,/ROLLBACK/);assert.match(s,/Source\.attach/);assert.match(s,/proposal_status='accepted'/)});
+test('routes bieden generate, list, status en accept',()=>{const s=read('routes/musicianInBandProposalRoutes.js');for(const x of ['generate','bands/:artistKey','/status','/accept'])assert.match(s,new RegExp(x.replace('/','\\/')))});
+test('frontend integreert Discogs queue in Bandleden',()=>{const s=read('client/src/features/musician-in-band/BandMembershipPanel.jsx');assert.match(s,/Discogs aanvullen/);assert.match(s,/DiscogsBandMemberProposalQueue/)});
+test('Docker scripts gebruiken centrale ARTIST_DB env',()=>{const s=read('scripts/lib/art013b2-db.sh');assert.match(s,/ARTIST_DB_CONTAINER/);assert.match(s,/ARTIST_DB_USER/);assert.match(s,/ARTIST_DB_NAME/)});
+test('package scripts zijn aanwezig',()=>{const p=JSON.parse(read('package.json'));for(const k of ['musician-in-band-proposals:preflight','db:migrate:art013b2','musician-in-band-proposals:verify','test:art013b2:db'])assert.ok(p.scripts[k])});

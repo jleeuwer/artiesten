@@ -1,0 +1,2 @@
+const express=require('express');const asyncHandler=require('../utils/asyncHandler');const ctrl=require('../controllers/musicianController');const router=express.Router();
+router.get('/search',asyncHandler(ctrl.search));router.get('/:musicianKey',asyncHandler(ctrl.get));router.post('/',asyncHandler(ctrl.create));router.put('/:musicianKey',asyncHandler(ctrl.update));router.delete('/:musicianKey',asyncHandler(ctrl.remove));router.post('/:musicianKey/create-artist',asyncHandler(ctrl.promote));module.exports=router;
