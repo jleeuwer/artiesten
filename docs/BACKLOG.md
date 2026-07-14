@@ -1253,3 +1253,187 @@ Ontwerpdocumenten:
 2. ART-013B `musician_in_band` uitbreiden met rol, periode en bron.
 3. Lokale redactionele biografie ontwerpen.
 4. ART-014 album-, release- en trackdatamodel uitwerken.
+
+---
+
+## ART-012D-4-VAL-1 — Discogs naamvoorstellen reviewqueue validatie en hardening
+
+**Status:** functioneel en technisch uitgewerkt; gereed voor codesprint.  
+**Prioriteit:** eerstvolgende backlogitem na acceptatie ART-UI-POLISH-1.
+
+### Doel
+
+De bestaande persistente reviewqueue operationeel afronden met aantoonbare idempotentie, volledige statusovergangen, live conflictcontrole, transactionele apply, concurrencybescherming en echte PostgreSQL-/Chromium-tests.
+
+### Scope codesprint
+
+- centrale naamnormalisatie en deduplicatie;
+- generation summary met verklaarbare tellers;
+- expliciete status-transition policy;
+- stabiele API-foutcodes;
+- apply met live conflictcontrole en rollback;
+- preflight en verify;
+- transactionele database-integratietest met `leftovers=0`;
+- frontend action-state, stale-state feedback en gerichte refresh;
+- contract-, component-, PostgreSQL- en Chromium-tests;
+- 84 functionele testcase-ID's als traceabilitybasis.
+
+### Buiten scope
+
+- canonical rename vanuit de queue;
+- bulkacties;
+- automatische merge of acceptatie;
+- nieuwe externe bronnen;
+- generieke conflictresolver.
+
+### Documentatie
+
+- `docs/ART_012D_4_VAL_1_Reviewqueue_Validatie_Hardening_Functioneel_Technisch_Ontwerp.md`
+- `docs/ART_012D_4_VAL_1_Testcases_en_Runbook.md`
+- `docs/ART_012D_4_VAL_1_Sprint_Manifest.md`
+
+### Vervolg na acceptatie
+
+1. ART-013B musician-in-band relatieverrijking;
+2. lokale biografie ontwerpen;
+3. ART-014 album-, release- en trackmodel.
+
+### Afgerond — ART-012D-4-VAL-1
+
+- Reviewqueue functioneel en technisch gehard.
+- Resterende lokale acceptatie: Docker PostgreSQL-integratietest en Chromium-hoofdflow uitvoeren.
+- Volgende geplande sprint: ART-013B musician-in-band relatieverrijking.
+
+---
+
+## ART-013B-1 — Musician-in-band handmatig relatiebeheer
+
+**Status:** functioneel en technisch uitgewerkt; gereed voor codesprint.  
+**Prioriteit:** eerstvolgende sprint na ART-012D-4-VAL-1.
+
+### Doel
+
+De bestaande tabel `musician_in_band` bruikbaar maken voor volledig handmatig relatiebeheer binnen de Artiesten-app.
+
+### Scope
+
+- bandleden tonen en beheren vanuit bandcontext;
+- bands/groepen tonen vanuit persoonscontext;
+- musician handmatig koppelen aan band;
+- rol, periode, bron en opmerkingen beheren;
+- incomplete historische periodes ondersteunen;
+- duplicaten blokkeren en overlap waarschuwen;
+- veilige update/delete en concurrencybescherming;
+- modulair backend- en frontendfeature-domein;
+- 88 traceerbare functionele testcases.
+
+### Architectuur
+
+- geen aparte app of container;
+- `musician_in_band` blijft lokale waarheid;
+- volledige handmatige invoer is leidend;
+- externe providers volgen later: Discogs → MusicBrainz → Wikidata;
+- providers leveren proposals en schrijven nooit direct naar `musician_in_band`.
+
+### Documentatie
+
+- `docs/ART_013B_1_Musician_In_Band_Handmatig_Relatiebeheer_Functioneel_Technisch_Ontwerp.md`
+- `docs/ART_013B_1_Testcases_en_Runbook.md`
+- `docs/ART_013B_1_Sprint_Manifest.md`
+
+### Vervolg
+
+1. ART-013B-2 Discogs members/groups proposals;
+2. ART-013B-3 MusicBrainz aanvulling;
+3. ART-013B-4 Wikidata verificatie;
+4. lokale biografie;
+5. ART-014 album-, release- en trackmodel.
+
+
+## ART-013B-1 implementatiestatus — 2026-07-12
+
+De concrete codesprint is opgeleverd. Handmatig beheer is modulair geïntegreerd in het Relatie-inzicht. De bestaande tabel `musician_in_band` blijft lokale waarheid. Preflight, migratie, verificatie, API, frontendfeature, duplicate/overlap/stale bescherming en automatische contracttests zijn aanwezig. Externe providers blijven vervolgscope: Discogs primair, MusicBrainz aanvullend, Wikidata daarna.
+
+### ART-013B-1-Fix-1 — centrale `.env`-loading
+Status: opgelost in vervangende oplevering. Alle ART-013B-1 databasecommando's volgen nu de bestaande `ARTIST_DB_*`-configuratie.
+
+### ART-013B-1-Fix-2 — legacy relationsleutelcompatibiliteit — opgeleverd
+- Preflight controleert `mb_musician_key` en `mb_artist_key` afzonderlijk.
+- Ontbrekende `mb_musician_band_key` is informatief en wordt door de migratie toegevoegd.
+- Bestaande relaties blijven behouden en krijgen automatisch een technische sleutel.
+
+---
+
+## ART-013A-3 — Artist/Musician asymmetrisch model
+
+**Status:** functioneel en technisch uitgewerkt; gereed voor codesprint.  
+**Prioriteit:** eerstvolgende sprint vóór ART-013B-2 Discogs proposals.
+
+### Doel
+
+Maak het mogelijk dat een musician zonder artist bestaat, terwijl iedere actieve persoonsartist exact één gekoppelde musician behoudt.
+
+### Kernregels
+
+- `musician.ar_artist_key` blijft de enige artist/musiciankoppeling;
+- musician → artist is 0..1;
+- person-artist → musician is exact 1;
+- niet-persoonsartists krijgen geen musician;
+- standalone musicians kunnen direct als bandlid worden gebruikt;
+- later koppelen of promoveren naar artist is mogelijk;
+- artist blijft bij koppeling leidend voor gedeelde velden;
+- geen bidirectionele synchronisatie.
+
+### Scope codesprint
+
+- standalone musician CRUD en zoekfunctie;
+- nieuw bandlid zonder artist vanuit bandcontext;
+- persoonsartist transactioneel met nieuwe of bestaande musician aanmaken;
+- link-, relink- en promotieflows;
+- één-op-één-constraint en datakwaliteitsverify;
+- bestaande ART-013A-sync aanpassen en regressietesten;
+- veilige delete- en mergeafhandeling;
+- 100 traceerbare functionele en technische testcases.
+
+### Buiten scope
+
+- Discogs/MusicBrainz/Wikidata providers;
+- musician merge;
+- track- en releasecredits;
+- aparte musician-app;
+- automatische fuzzy merge.
+
+### Documentatie
+
+- `docs/ART_013A_3_Artist_Musician_Asymmetrisch_Model_Functioneel_Technisch_Ontwerp.md`
+- `docs/ART_013A_3_Testcases_en_Runbook.md`
+- `docs/ART_013A_3_Sprint_Manifest.md`
+
+### Vervolg na acceptatie
+
+1. ART-013B-1 follow-up: **Nieuw bandlid aanmaken** volledig integreren indien niet in dezelfde codesprint afgerond;
+2. ART-013B-2 Discogs members/groups proposals;
+3. ART-013B-3 MusicBrainz aanvulling;
+4. ART-013B-4 Wikidata verificatie.
+
+### ART-013A-3 implementatiestatus — 2026-07-12
+
+Geïmplementeerd. Lokale Docker-migratie en PostgreSQL-integratietest moeten nog in de doelomgeving worden uitgevoerd. Daarna volgt ART-013B-2 Discogs bandledenproposals.
+
+## ART-013B-2 — Discogs ondersteuning bandledenrelaties — DESIGN READY
+
+- Handmatige invoer blijft leidend.
+- Discogs is primaire voorstelbron.
+- Nieuwe generieke tabellen `musician_in_band_proposal` en `musician_in_band_source`.
+- Reviewqueue met matching, conflicts, later/negeren en expliciete acceptatie.
+- Standalone musician kan vanuit voorstel worden aangemaakt zonder artist.
+- MusicBrainz volgt als aanvulling; Wikidata daarna als verificatie.
+
+## ART-013B-2 — Discogs bandledenvoorstellen (geïmplementeerd)
+Discogs primair, reviewqueue, expliciete acceptatie, generieke bronhistorie. Vervolg: MusicBrainz aanvulling, daarna Wikidata.
+
+## ART-013B-2-Fix-5 — Artist-aware Discogs member matching — opgeleverd
+- Match Discogs-bandleden met musician, canonical artist, alternatieve spelling en Discogs-ID.
+- Diagnoseer ontbrekend/unknown artisttype en verkeerd artisttype.
+- Blokkeer nieuwe musician zolang een relevante artistmatch niet is beoordeeld.
+- Person-artist zonder musician kan transactioneel worden gekoppeld bij acceptatie.

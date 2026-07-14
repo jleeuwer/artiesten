@@ -2266,19 +2266,28 @@ async function detectNameProposalConflict({ artistKey, proposalName, client = po
     `
     SELECT ar_artist_key, ar_artist_name
     FROM public.artist
-    WHERE ar_artist_key = $1::integer
-    LIMIT 1
-    `,
-    [id]
+    WHERE ar_artist_name IS NOT NULL
+    `
   );
-  const artist = canonicalRes.rows[0] || null;
-  if (artist && normalizeArtistName(artist.ar_artist_name) === normalized) {
+  const canonicalOwner = canonicalRes.rows.find((row) => normalizeArtistName(row.ar_artist_name) === normalized) || null;
+  if (canonicalOwner && Number(canonicalOwner.ar_artist_key) === id) {
     return {
       status: "existing",
       conflictType: "already_canonical",
       conflictArtistKey: id,
-      conflictArtistName: artist.ar_artist_name,
+      conflictArtistName: canonicalOwner.ar_artist_name,
       reason: "Deze naam is al de lokale canonical artist name.",
+      canApply: false,
+      normalizedName: normalized,
+    };
+  }
+  if (canonicalOwner) {
+    return {
+      status: "conflict",
+      conflictType: "canonical_owned_by_other_artist",
+      conflictArtistKey: canonicalOwner.ar_artist_key,
+      conflictArtistName: canonicalOwner.ar_artist_name,
+      reason: `Deze naam is al de canonical naam van artist_key ${canonicalOwner.ar_artist_key} (${canonicalOwner.ar_artist_name}).`,
       canApply: false,
       normalizedName: normalized,
     };
@@ -2289,12 +2298,9 @@ async function detectNameProposalConflict({ artistKey, proposalName, client = po
     SELECT s.as_alternatieve_spelling, s.as_artist_key, a.ar_artist_name
     FROM public.artiesten_spelling s
     JOIN public.artist a ON a.ar_artist_key = s.as_artist_key
-    WHERE lower(trim(s.as_alternatieve_spelling::text)) = lower(trim($1::text))
-    LIMIT 1
-    `,
-    [text]
+    `
   );
-  const owner = spellingRes.rows[0] || null;
+  const owner = spellingRes.rows.find((row) => normalizeArtistName(row.as_alternatieve_spelling) === normalized) || null;
   if (!owner) {
     return {
       status: "new",
@@ -2328,6 +2334,29 @@ async function detectNameProposalConflict({ artistKey, proposalName, client = po
     canApply: false,
     normalizedName: normalized,
   };
+}
+
+
+const NAME_PROPOSAL_TRANSITIONS = Object.freeze({
+  new: new Set(["review_later", "ignored"]),
+  review_later: new Set(["new"]),
+  ignored: new Set(["new"]),
+  conflict: new Set([]),
+  existing: new Set([]),
+  invalid: new Set([]),
+  added: new Set([]),
+});
+
+function assertNameProposalTransition(currentStatus, nextStatus) {
+  const current = normalizeNameProposalStatus(currentStatus);
+  const next = normalizeNameProposalStatus(nextStatus);
+  if (current === next) return;
+  if (!NAME_PROPOSAL_TRANSITIONS[current]?.has(next)) {
+    throw Object.assign(
+      new Error(`Statusovergang ${current} -> ${next} is niet toegestaan.`),
+      { statusCode: 409, code: "INVALID_NAME_PROPOSAL_TRANSITION" }
+    );
+  }
 }
 
 function summarizeNameProposalRows(rows = []) {
@@ -2434,6 +2463,14 @@ async function generateDiscogsNameProposals(id) {
 
   const rawProposals = extractDiscogsNameProposalValues(normalized);
   const classified = await classifyDiscogsNameProposalRows({ artist, rawProposals });
+  const existingRes = await pool.query(
+    `SELECT proposal_type, normalized_name, status
+     FROM public.artist_name_proposals
+     WHERE artist_key = $1::integer AND lower(source) = 'discogs' AND source_external_id = $2::text`,
+    [artist.ar_artist_key, String(reference.external_id || "")]
+  ).catch((err) => err.code === "42P01" ? { rows: [] } : Promise.reject(err));
+  const existingKeys = new Set(existingRes.rows.map((row) => `${row.proposal_type}::${row.normalized_name}`));
+  const generationSummary = { processed: classified.length, inserted: 0, updated: 0, unchangedTerminal: 0, new: 0, existing: 0, conflict: 0, invalid: 0 };
   let generated = 0;
   const client = await pool.connect();
   try {
@@ -2462,7 +2499,7 @@ async function generateDiscogsNameProposals(id) {
           reason = EXCLUDED.reason,
           notes = EXCLUDED.notes,
           status = CASE
-            WHEN public.artist_name_proposals.status IN ('added', 'ignored') THEN public.artist_name_proposals.status
+            WHEN public.artist_name_proposals.status IN ('added', 'ignored', 'review_later') THEN public.artist_name_proposals.status
             ELSE EXCLUDED.status
           END,
           updated_at = now()
@@ -2484,7 +2521,13 @@ async function generateDiscogsNameProposals(id) {
           cache?.cache_id ? `Generated from artist_enrichment_cache.cache_id=${cache.cache_id}` : "Generated from Discogs cache",
         ]
       );
-      if (res.rows[0]) generated += 1;
+      if (res.rows[0]) {
+        generated += 1;
+        const key = `${proposal.source}::${proposal.normalizedValue}`;
+        if (existingKeys.has(key)) generationSummary.updated += 1;
+        else generationSummary.inserted += 1;
+        generationSummary[status] = (generationSummary[status] || 0) + 1;
+      }
     }
     await client.query("COMMIT");
   } catch (err) {
@@ -2495,72 +2538,81 @@ async function generateDiscogsNameProposals(id) {
   }
 
   const queue = await listDiscogsNameProposals(id);
-  return { ...queue, generated };
+  return { ...queue, generated, generationSummary };
 }
 
-async function updateDiscogsNameProposalStatus({ artistKey, proposalId, status, note = "", performedBy = "artist-app" } = {}) {
+async function updateDiscogsNameProposalStatus({ artistKey, proposalId, status, note = "", performedBy = "artist-app", expectedUpdatedAt = null } = {}) {
   const id = Number(artistKey);
   const pid = Number(proposalId);
   const nextStatus = String(status || "").trim().toLowerCase();
-  const allowed = ["new", "ignored", "conflict", "review_later"];
+  const allowed = ["new", "ignored", "review_later"];
   if (!Number.isFinite(id) || !Number.isFinite(pid)) {
-    throw Object.assign(new Error("Invalid artist key or proposal id"), { statusCode: 400 });
+    throw Object.assign(new Error("Invalid artist key or proposal id"), { statusCode: 400, code: "INVALID_NAME_PROPOSAL_ID" });
   }
   if (!allowed.includes(nextStatus)) {
-    throw Object.assign(new Error("Invalid name proposal status"), { statusCode: 400 });
+    throw Object.assign(new Error("Invalid name proposal status"), { statusCode: 400, code: "INVALID_NAME_PROPOSAL_STATUS" });
   }
 
-  let conflict = null;
-  if (nextStatus === "new") {
-    const proposalRes = await pool.query(
-      `SELECT proposal_name FROM public.artist_name_proposals WHERE artist_key = $1::integer AND proposal_id = $2::bigint`,
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const currentRes = await client.query(
+      `SELECT * FROM public.artist_name_proposals
+       WHERE artist_key = $1::integer AND proposal_id = $2::bigint
+       FOR UPDATE`,
       [id, pid]
     );
-    const proposal = proposalRes.rows[0];
-    if (!proposal) return { proposal: null, queue: await listDiscogsNameProposals(id) };
-    conflict = await detectNameProposalConflict({ artistKey: id, proposalName: proposal.proposal_name });
-  }
+    const current = currentRes.rows[0];
+    if (!current) {
+      throw Object.assign(new Error("Naamvoorstel niet gevonden."), { statusCode: 404, code: "NAME_PROPOSAL_NOT_FOUND" });
+    }
+    if (expectedUpdatedAt && new Date(current.updated_at).toISOString() !== new Date(expectedUpdatedAt).toISOString()) {
+      throw Object.assign(new Error("Het naamvoorstel is intussen gewijzigd. Ververs de queue en probeer opnieuw."), { statusCode: 409, code: "STALE_NAME_PROPOSAL" });
+    }
+    assertNameProposalTransition(current.status, nextStatus);
 
-  const effectiveStatus = nextStatus === "new" && conflict ? conflict.status : nextStatus;
-  const res = await pool.query(
-    `
-    UPDATE public.artist_name_proposals
-    SET status = $3::text,
-        conflict_type = CASE WHEN $3::text IN ('conflict', 'existing', 'invalid') THEN $5::text ELSE CASE WHEN $3::text = 'new' THEN NULL ELSE conflict_type END END,
-        conflict_artist_key = CASE WHEN $3::text IN ('conflict', 'existing') THEN $6::integer ELSE CASE WHEN $3::text = 'new' THEN NULL ELSE conflict_artist_key END END,
-        conflict_artist_name = CASE WHEN $3::text IN ('conflict', 'existing') THEN $7::citext ELSE CASE WHEN $3::text = 'new' THEN NULL ELSE conflict_artist_name END END,
-        reason = CASE
-          WHEN $5::text IS NOT NULL THEN $8::text
-          WHEN $3::text = 'review_later' THEN 'Later beoordelen.'
-          WHEN $3::text = 'ignored' THEN 'Genegeerd door gebruiker.'
-          ELSE reason
-        END,
-        reviewed_at = now(),
-        reviewed_by = $9::text,
-        ignored_at = CASE WHEN $3::text = 'ignored' THEN now() ELSE ignored_at END,
-        ignored_by = CASE WHEN $3::text = 'ignored' THEN $9::text ELSE ignored_by END,
-        notes = NULLIF(trim(coalesce($4::text, '')), ''),
-        updated_at = now()
-    WHERE artist_key = $1::integer
-      AND proposal_id = $2::bigint
-    RETURNING *
-    `,
-    [
-      id,
-      pid,
-      effectiveStatus,
-      note || "",
-      conflict?.conflictType || null,
-      conflict?.conflictArtistKey || null,
-      conflict?.conflictArtistName || null,
-      conflict?.reason || null,
-      performedBy,
-    ]
-  );
-  return { proposal: res.rows[0] || null, queue: await listDiscogsNameProposals(id) };
+    let conflict = null;
+    let effectiveStatus = nextStatus;
+    if (nextStatus === "new") {
+      conflict = await detectNameProposalConflict({ artistKey: id, proposalName: current.proposal_name, client });
+      effectiveStatus = conflict.status;
+    }
+
+    const res = await client.query(
+      `
+      UPDATE public.artist_name_proposals
+      SET status = $3::text,
+          conflict_type = CASE WHEN $3::text IN ('conflict', 'existing', 'invalid') THEN $5::text ELSE NULL END,
+          conflict_artist_key = CASE WHEN $3::text IN ('conflict', 'existing') THEN $6::integer ELSE NULL END,
+          conflict_artist_name = CASE WHEN $3::text IN ('conflict', 'existing') THEN $7::citext ELSE NULL END,
+          reason = CASE
+            WHEN $5::text IS NOT NULL THEN $8::text
+            WHEN $3::text = 'review_later' THEN 'Later beoordelen.'
+            WHEN $3::text = 'ignored' THEN 'Genegeerd door gebruiker.'
+            ELSE 'Heropend en live opnieuw gecontroleerd.'
+          END,
+          reviewed_at = now(), reviewed_by = $9::text,
+          ignored_at = CASE WHEN $3::text = 'ignored' THEN now() ELSE NULL END,
+          ignored_by = CASE WHEN $3::text = 'ignored' THEN $9::text ELSE NULL END,
+          notes = NULLIF(trim(coalesce($4::text, '')), ''), updated_at = now()
+      WHERE artist_key = $1::integer AND proposal_id = $2::bigint
+      RETURNING *
+      `,
+      [id, pid, effectiveStatus, note || "", conflict?.conflictType || null,
+       conflict?.conflictArtistKey || null, conflict?.conflictArtistName || null,
+       conflict?.reason || null, performedBy]
+    );
+    await client.query("COMMIT");
+    return { proposal: res.rows[0], queue: await listDiscogsNameProposals(id) };
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch (_) { /* ignore */ }
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
-async function applyDiscogsNameProposalAsSpelling({ artistKey, proposalId, performedBy = "artist-app" } = {}) {
+async function applyDiscogsNameProposalAsSpelling({ artistKey, proposalId, performedBy = "artist-app", expectedUpdatedAt = null } = {}) {
   const id = Number(artistKey);
   const pid = Number(proposalId);
   if (!Number.isFinite(id) || !Number.isFinite(pid)) {
@@ -2586,8 +2638,11 @@ async function applyDiscogsNameProposalAsSpelling({ artistKey, proposalId, perfo
       await client.query("ROLLBACK");
       return null;
     }
-    if (!["new", "review_later"].includes(proposal.status)) {
-      throw Object.assign(new Error("Alleen nieuwe/later te beoordelen naamvoorstellen kunnen als spelling worden toegevoegd."), { statusCode: 409, code: "INVALID_PROPOSAL_STATUS" });
+    if (expectedUpdatedAt && new Date(proposal.updated_at).toISOString() !== new Date(expectedUpdatedAt).toISOString()) {
+      throw Object.assign(new Error("Het naamvoorstel is intussen gewijzigd. Ververs de queue en probeer opnieuw."), { statusCode: 409, code: "STALE_NAME_PROPOSAL" });
+    }
+    if (proposal.status !== "new") {
+      throw Object.assign(new Error("Alleen nieuwe naamvoorstellen kunnen als spelling worden toegevoegd."), { statusCode: 409, code: "INVALID_PROPOSAL_STATUS" });
     }
 
     const conflict = await detectNameProposalConflict({ artistKey: id, proposalName: proposal.proposal_name, client });

@@ -62,13 +62,13 @@ export const api = {
     method: "POST",
     body: JSON.stringify({})
   }),
-  updateDiscogsNameProposalStatus: (id, proposalId, { status, note = "" } = {}) => request(`/api/artists/${id}/discogs/name-proposals/${proposalId}/status`, {
+  updateDiscogsNameProposalStatus: (id, proposalId, { status, note = "", expectedUpdatedAt = null } = {}) => request(`/api/artists/${id}/discogs/name-proposals/${proposalId}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ status, note })
+    body: JSON.stringify({ status, note, expectedUpdatedAt })
   }),
-  applyDiscogsNameProposalAsSpelling: (id, proposalId) => request(`/api/artists/${id}/discogs/name-proposals/${proposalId}/apply-spelling`, {
+  applyDiscogsNameProposalAsSpelling: (id, proposalId, { expectedUpdatedAt = null } = {}) => request(`/api/artists/${id}/discogs/name-proposals/${proposalId}/apply-spelling`, {
     method: "POST",
-    body: JSON.stringify({})
+    body: JSON.stringify({ expectedUpdatedAt })
   }),
   getDiscogsSpellingProposals: (id) => request(`/api/artists/${id}/discogs/spelling-proposals`),
   addDiscogsAlternativeSpelling: (id, { proposedName }) => request(`/api/artists/${id}/discogs/spelling-proposals/alternative`, {
@@ -96,6 +96,24 @@ export const api = {
     body: JSON.stringify({ status, note })
   }),
   setArtistFavorite: (id, favorite) => request(`/api/artists/${id}/favorite`, { method: "PATCH", body: JSON.stringify({ favorite }) }),
+
+  listMusicianInBand: (artistKey, context = "band") => request(`/api/musician-in-band/artists/${artistKey}?context=${encodeURIComponent(context)}`),
+  searchMusicians: (q = "") => request(`/api/musician-in-band/musicians/search?q=${encodeURIComponent(q)}`),
+  createMusicianInBand: (payload) => request(`/api/musician-in-band`, { method: "POST", body: JSON.stringify(payload) }),
+  createMusicianAndBandMembership: (payload) => request(`/api/musician-in-band/create-member`, { method: "POST", body: JSON.stringify(payload) }),
+  createMusicianFromArtistAndBandMembership: (payload) => request(`/api/musician-in-band/create-member-from-artist`, { method: "POST", body: JSON.stringify(payload) }),
+  searchStandaloneMusicians: (q = "") => request(`/api/musicians/search?q=${encodeURIComponent(q)}`),
+  createMusician: (payload) => request(`/api/musicians`, { method: "POST", body: JSON.stringify(payload) }),
+  updateMusician: (key, payload) => request(`/api/musicians/${key}`, { method: "PUT", body: JSON.stringify(payload) }),
+  promoteMusicianToArtist: (key, payload) => request(`/api/musicians/${key}/create-artist`, { method: "POST", body: JSON.stringify(payload) }),
+  linkArtistMusician: (artistKey, musicianKey) => request(`/api/artists/${artistKey}/musician/link`, { method: "POST", body: JSON.stringify({ musicianKey }) }),
+  unlinkArtistMusician: (artistKey) => request(`/api/artists/${artistKey}/musician/link`, { method: "DELETE" }),
+  updateMusicianInBand: (relationKey, payload) => request(`/api/musician-in-band/${relationKey}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteMusicianInBand: (relationKey, expectedUpdatedAt = null) => request(`/api/musician-in-band/${relationKey}`, { method: "DELETE", body: JSON.stringify({ expectedUpdatedAt }) }),
+  generateMusicianInBandProposals: (artistKey) => request(`/api/musician-in-band-proposals/bands/${artistKey}/generate`, { method: "POST", body: JSON.stringify({}) }),
+  listMusicianInBandProposals: (artistKey, { status = "", matchStatus = "", q = "" } = {}) => request(`/api/musician-in-band-proposals/bands/${artistKey}?status=${encodeURIComponent(status)}&matchStatus=${encodeURIComponent(matchStatus)}&q=${encodeURIComponent(q)}`),
+  updateMusicianInBandProposalStatus: (proposalKey, payload) => request(`/api/musician-in-band-proposals/${proposalKey}/status`, { method: "POST", body: JSON.stringify(payload) }),
+  acceptMusicianInBandProposal: (proposalKey, payload) => request(`/api/musician-in-band-proposals/${proposalKey}/accept`, { method: "POST", body: JSON.stringify(payload) }),
 
   createArtist: (artist) => request(`/api/artists`, { method: "POST", body: JSON.stringify(artist) }),
   updateArtist: (id, artist) => request(`/api/artists/${id}`, { method: "PUT", body: JSON.stringify(artist) }),

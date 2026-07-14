@@ -67,7 +67,14 @@ test('ART-012E-2 frontend shows profile photo grid and calls primary image API',
   assert.match(modal, /Artiestprofiel/);
   assert.match(modal, /Discogs gekoppeld/);
   assert.match(modal, /primaryDiscogsImage/);
-  assert.match(modal, /<ArtistProfileHeader artist=\{artist\} relations=\{relations\} loading=\{relationsLoading\} \/>/);
+  // Keep the historical ART-012E-2 contract focused on the required profile-header wiring.
+  // Newer sprints may add extra props, such as the live passing date used by
+  // ART-UI-POLISH-1-Fix-3, without breaking the original profile-image feature.
+  assert.match(modal, /<ArtistProfileHeader\b/);
+  assert.match(modal, /artist=\{artist\}/);
+  assert.match(modal, /relations=\{relations\}/);
+  assert.match(modal, /loading=\{relationsLoading\}/);
+  assert.match(modal, /passingDate=\{form\.ar_artist_passing\}/);
 
   assert.match(css, /artist-profile-image/);
   assert.match(css, /artist-discogs-image-grid/);

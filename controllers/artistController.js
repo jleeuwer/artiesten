@@ -1,5 +1,6 @@
 const Artist = require("../models/artist");
 const Discogs = require("../services/discogsClient");
+const ArtistMusicianLinks = require("../services/artistMusicianLinkService");
 
 function normalizePayload(body = {}) {
   const text = (value) => {
@@ -243,6 +244,7 @@ async function updateDiscogsEnrichmentProposalStatus(req, res) {
       proposalId,
       status: req.body?.status,
       note: req.body?.note || "",
+      expectedUpdatedAt: req.body?.expectedUpdatedAt || null,
       performedBy: req.body?.performedBy || req.user?.username || "artist-app",
     });
     res.json(data);
@@ -345,6 +347,7 @@ async function applyDiscogsNameProposalAsSpelling(req, res) {
     const data = await Artist.applyDiscogsNameProposalAsSpelling({
       artistKey: id,
       proposalId,
+      expectedUpdatedAt: req.body?.expectedUpdatedAt || null,
       performedBy: req.body?.performedBy || req.user?.username || "artist-app",
     });
     if (!data) return res.status(404).json({ error: "Artist or proposal not found" });
@@ -561,7 +564,7 @@ async function create(req, res) {
     return res.status(400).json({ error: "Artist name is required" });
   }
 
-  const created = await Artist.create(payload);
+  const created = await ArtistMusicianLinks.createArtistWithMusician(payload, { musicianKey: req.body?.musicianKey || null });
   res.status(201).json(created);
 }
 

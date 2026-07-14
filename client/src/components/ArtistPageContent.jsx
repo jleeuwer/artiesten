@@ -6,6 +6,7 @@ import {
 import { api } from "../api.js";
 import ArtistFormModal from "./ArtistFormModal.jsx";
 import ConfirmModal from "./ConfirmModal.jsx";
+import BandMembershipPanel from "../features/musician-in-band/BandMembershipPanel.jsx";
 
 function fmtDate(v) {
   if (!v) return "";
@@ -563,8 +564,11 @@ export default function ArtistPageContent({ shellContext = {} }) {
     try {
       const data = await api.generateDiscogsNameProposals(relationArtist.ar_artist_key);
       setDiscogsNameQueue(data);
-      setDiscogsNameQueueGenerated(data.generated ?? 0);
-      notify("Discogs naamvoorstellen bijgewerkt", "success");
+      setDiscogsNameQueueGenerated(data.generationSummary || { processed: data.generated ?? 0 });
+      const summary = data.generationSummary;
+      notify(summary
+        ? `Discogs naamvoorstellen bijgewerkt: ${summary.inserted} nieuw, ${summary.updated} bijgewerkt, ${summary.conflict || 0} conflict(en).`
+        : "Discogs naamvoorstellen bijgewerkt", "success");
     } catch (e) {
       const msg = pickNiceMessage(e);
       setDiscogsNameQueueError(msg);
@@ -579,7 +583,7 @@ export default function ArtistPageContent({ shellContext = {} }) {
     setDiscogsNameQueueActionLoading(`${status}-${proposal.proposal_id}`);
     setDiscogsNameQueueError("");
     try {
-      const data = await api.updateDiscogsNameProposalStatus(relationArtist.ar_artist_key, proposal.proposal_id, { status });
+      const data = await api.updateDiscogsNameProposalStatus(relationArtist.ar_artist_key, proposal.proposal_id, { status, expectedUpdatedAt: proposal.updated_at });
       setDiscogsNameQueue(data.queue || data);
     } catch (e) {
       const msg = pickNiceMessage(e);
@@ -595,7 +599,7 @@ export default function ArtistPageContent({ shellContext = {} }) {
     setDiscogsNameQueueActionLoading(`apply-${proposal.proposal_id}`);
     setDiscogsNameQueueError("");
     try {
-      const data = await api.applyDiscogsNameProposalAsSpelling(relationArtist.ar_artist_key, proposal.proposal_id);
+      const data = await api.applyDiscogsNameProposalAsSpelling(relationArtist.ar_artist_key, proposal.proposal_id, { expectedUpdatedAt: proposal.updated_at });
       setDiscogsNameQueue(data.queue || null);
       if (data.relations) setRelations(data.relations);
       notify(`Alternatieve spelling toegevoegd: ${proposal.proposal_name}`, "success");
@@ -1502,6 +1506,7 @@ export default function ArtistPageContent({ shellContext = {} }) {
             <Alert variant="danger" className="mb-0">{relationsError}</Alert>
           ) : (
             <>
+            {showRelationPanelSection("relations") ? <BandMembershipPanel artist={relationArtist} /> : null}
             <div className="artist-relation-grid">
               <div className={`artist-relation-card ${showRelationPanelSection("relations") ? "" : "d-none"}`}>
                 <h3 className="h6">File details</h3>
@@ -1827,7 +1832,13 @@ export default function ArtistPageContent({ shellContext = {} }) {
                       </div>
                     </div>
                     {discogsNameQueueError ? <Alert variant="danger" className="py-2 small mb-2">{discogsNameQueueError}</Alert> : null}
-                    {discogsNameQueueGenerated !== null ? <Alert variant="info" className="py-2 small mb-2">Naamvoorstellen bijgewerkt vanuit Discogs-cache. Verwerkt: {discogsNameQueueGenerated}.</Alert> : null}
+                    {discogsNameQueueGenerated !== null ? (
+                      <Alert variant="info" className="py-2 small mb-2" data-testid="name-proposal-generation-summary">
+                        {typeof discogsNameQueueGenerated === "object"
+                          ? `Naamvoorstellen bijgewerkt: ${discogsNameQueueGenerated.processed || 0} verwerkt · ${discogsNameQueueGenerated.inserted || 0} nieuw · ${discogsNameQueueGenerated.updated || 0} bijgewerkt · ${discogsNameQueueGenerated.existing || 0} bestaand · ${discogsNameQueueGenerated.conflict || 0} conflict · ${discogsNameQueueGenerated.invalid || 0} ongeldig.`
+                          : `Naamvoorstellen bijgewerkt vanuit Discogs-cache. Verwerkt: ${discogsNameQueueGenerated}.`}
+                      </Alert>
+                    ) : null}
                     {discogsNameQueue ? (
                       <>
                         <div className="d-flex gap-2 flex-wrap mb-2">

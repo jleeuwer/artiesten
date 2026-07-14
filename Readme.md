@@ -1116,3 +1116,131 @@ mkdir -p logs && npm run test:art-ui-polish1 2>&1 | tee "logs/art-ui-polish1-$(d
 
 ## ART-UI-POLISH-1-Fix-3 (2026-07-11)
 Het daadwerkelijke Edit-scherm toont nu een zichtbare overledenbadge met inline SVG-hourglass, gekoppeld aan het actuele sterfdatumveld. Zie `docs/releases/ART-UI-POLISH-1-FIX-3.md`.
+
+## ART-UI-POLISH-1-Fix-4 — regressietestcorrectie
+
+De historische ART-012E-2-contracttest accepteert nu aanvullende props op `ArtistProfileHeader` en valideert expliciet de `passingDate`-koppeling van het Edit-scherm. Dit voorkomt een fout-negatieve `test:all` na ART-UI-POLISH-1-Fix-3.
+
+---
+
+## ART-012D-4-VAL-1 — Volgende sprint: reviewqueue validatie en hardening
+
+De functionele en technische sprintbasis voor de volledige afronding van de Discogs naamvoorstellenreviewqueue is beschikbaar.
+
+Documenten:
+
+- `docs/ART_012D_4_VAL_1_Reviewqueue_Validatie_Hardening_Functioneel_Technisch_Ontwerp.md`
+- `docs/ART_012D_4_VAL_1_Testcases_en_Runbook.md`
+- `docs/ART_012D_4_VAL_1_Sprint_Manifest.md`
+
+De codesprint moet onder andere idempotente generatie, live conflictcontrole, transactionele apply, preflight/verify, PostgreSQL-integratietests en een Chromium-E2E-hoofdflow implementeren. De testbasis bevat 84 traceerbare functionele scenario's.
+
+Let op: de in het ontwerp genoemde nieuwe npm-commando's en scripts zijn in deze ontwerpoplevering nog niet geïmplementeerd.
+
+## ART-012D-4-VAL-1 — naamvoorstellenreviewqueue hardening
+
+```bash
+mkdir -p logs && npm run name-proposals:preflight 2>&1 | tee "logs/art012d4-val1-preflight-$(date +%Y%m%d-%H%M%S).log"
+mkdir -p logs && npm run db:migrate:art012d4:val1 2>&1 | tee "logs/art012d4-val1-migration-$(date +%Y%m%d-%H%M%S).log"
+mkdir -p logs && npm run test:art012d4:val1:contract 2>&1 | tee "logs/art012d4-val1-contract-$(date +%Y%m%d-%H%M%S).log"
+mkdir -p logs && ARTIST_DB_TEST_ALLOWED=true npm run test:art012d4:val1:db 2>&1 | tee "logs/art012d4-val1-dbtest-$(date +%Y%m%d-%H%M%S).log"
+```
+
+---
+
+## ART-013B-1 — volgende codesprint
+
+ART-013B-1 voegt handmatig beheer van `musician_in_band` toe binnen de Artiesten-app. De functionaliteit wordt geïntegreerd in band- en persoonsdetails, maar technisch als aparte featuremodule ontwikkeld.
+
+Ontwerpdocumenten:
+
+- `docs/ART_013B_1_Musician_In_Band_Handmatig_Relatiebeheer_Functioneel_Technisch_Ontwerp.md`
+- `docs/ART_013B_1_Testcases_en_Runbook.md`
+- `docs/ART_013B_1_Sprint_Manifest.md`
+
+De gebruiker blijft leidend en kan alle data handmatig invoeren. Latere enrichmentvolgorde: Discogs, MusicBrainz, Wikidata. De in het ontwerp genoemde npm-commando's zijn in deze ontwerpoplevering nog niet geïmplementeerd.
+
+
+## ART-013B-1 implementatiestatus — 2026-07-12
+
+De concrete codesprint is opgeleverd. Handmatig beheer is modulair geïntegreerd in het Relatie-inzicht. De bestaande tabel `musician_in_band` blijft lokale waarheid. Preflight, migratie, verificatie, API, frontendfeature, duplicate/overlap/stale bescherming en automatische contracttests zijn aanwezig. Externe providers blijven vervolgscope: Discogs primair, MusicBrainz aanvullend, Wikidata daarna.
+
+### ART-013B-1 databasecommando's en `.env`
+
+De commando's `musician-in-band:preflight`, `db:migrate:art013b1`, `musician-in-band:verify` en `test:art013b1:db` laden automatisch de `.env` uit de applicatieroot. Gebruik de bestaande variabelen:
+
+```env
+ARTIST_DB_CONTAINER=my-postgresdb
+ARTIST_DB_USER=postgres
+ARTIST_DB_NAME=musicdb
+ARTIST_DB_TEST_ALLOWED=false
+ARTIST_DB_ENVIRONMENT=development
+```
+
+Er zijn geen aparte `POSTGRES_CONTAINER`, `POSTGRES_DB` of `POSTGRES_USER` variabelen nodig.
+
+### ART-013B-1-Fix-2
+Het legacy schema hoeft vooraf geen `mb_musician_band_key` te bevatten. `npm run musician-in-band:preflight` meldt dit als informatie; `npm run db:migrate:art013b1` voegt de technische identity-sleutel en unieke index veilig toe.
+
+## ART-013A-3 — Artist/Musician asymmetrisch model (ontwerp)
+
+De volgende sprint wijzigt het functionele contract tussen `artist` en `musician`:
+
+- iedere persoonsartist heeft exact één musician;
+- musicians mogen ook zonder artist bestaan;
+- een nieuw bandlid kan daardoor rechtstreeks als musician worden geregistreerd;
+- een standalone musician kan later worden gekoppeld aan of gepromoveerd tot artist;
+- `musician.ar_artist_key` blijft de enige koppeling en de bestaande artist→musician-sync blijft éénrichting.
+
+Ontwerpdocumentatie:
+
+- `docs/ART_013A_3_Artist_Musician_Asymmetrisch_Model_Functioneel_Technisch_Ontwerp.md`
+- `docs/ART_013A_3_Testcases_en_Runbook.md`
+- `docs/ART_013A_3_Sprint_Manifest.md`
+
+De ontwerpoplevering bevat nog geen nieuwe runtimecode of migratie. De codesprint moet preflight, migratie, API, UI, verify en transactionele integratietests implementeren.
+
+## ART-013A-3 — Implementatie
+
+Het asymmetrische model is geïmplementeerd: een musician mag zonder artist bestaan, terwijl een nieuwe persoonsartist transactioneel één musician krijgt. Vanuit Bandleden kan een standalone musician direct met een bandrelatie worden aangemaakt. Zie `docs/ART_013A_3_Implementatie.md`.
+
+## ART-013A-3-Fix-1 — installatiecontrole
+
+Deze release bevat de applicatiebestanden direct in de root van de ZIP. Pak de ZIP uit over de applicatieroot, zodat ook `package.json` wordt bijgewerkt.
+
+Controleer na installatie:
+
+```bash
+npm run verify:art013a3:install 2>&1 | tee "logs/art013a3-install-verify-$(date +%Y%m%d-%H%M%S).log"
+```
+
+Daarna zijn de volgende commando's beschikbaar:
+
+```bash
+npm run artist-musician:preflight
+npm run db:migrate:art013a3
+npm run artist-musician:verify
+npm run test:art013a3:db
+```
+
+
+## ART-013A-3-Fix-2 — Nieuw bandlid
+Bij de optie **Nieuw bandlid** wordt de `musicianKey` pas na het transactioneel aanmaken van de standalone musician toegekend. `bandArtistKey` blijft vooraf verplicht. Er is geen databasemigratie nodig.
+
+## Volgende sprint: ART-013B-2
+
+ART-013B-2 voegt Discogs-ondersteuning toe aan het handmatige bandledenbeheer. Discogs-resultaten worden eerst als voorstellen opgeslagen. De gebruiker kiest expliciet of een bestaande musician wordt gekoppeld, een standalone musician wordt aangemaakt, een bestaande relatie wordt aangevuld of alleen de bron wordt vastgelegd. Zie `docs/ART_013B_2_Discogs_Bandleden_Proposals_Functioneel_Technisch_Ontwerp.md`.
+
+## ART-013B-2 — Discogs bandledenvoorstellen
+Zie `docs/ART_013B_2_Implementatie.md`. Discogs ondersteunt het handmatige beheer via een reviewqueue; lokale data blijft leidend. De matchflow voor een later aangemaakte person-artist staat in `docs/ART_013A_3_UX_1_Existing_Musician_Match_Link.md`.
+
+
+## ART-013B-2-Fix-2 — bronconstraint, zoeken en migratiediagnostiek
+Voer na installatie opnieuw `npm run db:migrate:art013b2` uit. Deze idempotente migratie breidt de toegestane bronsoorten uit met Discogs, MusicBrainz en Wikidata. Bandlid zoeken gebruikt nu zowel musician- als artistdata. Een persoonsartist zonder musician kan transactioneel worden gekoppeld; een artist met een ander type geeft een waarschuwing en moet eerst in artistbeheer worden gecorrigeerd. Ontbrekende proposal-tabellen geven foutcode `ART013B2_MIGRATION_REQUIRED` in plaats van een kale PostgreSQL-melding.
+
+## ART-013B-2-Fix-3 — source type constraint hardening
+
+Als Discogs-acceptatie nog faalt op `ck_musician_in_band_source_type`, voer de ART-013B-2-migratie opnieuw uit. Fix-3 verwijdert alle legacy CHECK-constraints die `mb_source_type` beperken, normaliseert bestaande waarden en installeert één canonieke constraint. Gebruik daarna `npm run musician-in-band-proposals:verify`; de uitvoer toont de exacte actieve constraintdefinitie.
+
+### ART-013B-2-Fix-5
+Discogs-bandledenmatching controleert nu ook bestaande artists en alternatieve spellingen. Voer na installatie opnieuw `npm run db:migrate:art013b2` uit.

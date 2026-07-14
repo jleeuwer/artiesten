@@ -1,6 +1,9 @@
 // routes/indexRoutes.js
 const express = require("express");
 const artistRoutes = require("./artistRoutes");
+const musicianInBandRoutes = require("./musicianInBandRoutes");
+const musicianRoutes = require("./musicianRoutes");
+const musicianInBandProposalRoutes = require("./musicianInBandProposalRoutes");
 const asyncHandler = require("../utils/asyncHandler");
 const { pool } = require("../config/db");
 
@@ -18,5 +21,8 @@ router.get(
 );
 
 router.use("/artists", artistRoutes);
+router.use("/musician-in-band", musicianInBandRoutes);
+router.use("/musicians", musicianRoutes);
+router.use("/musician-in-band-proposals", musicianInBandProposalRoutes);
 
 module.exports = router;

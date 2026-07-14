@@ -35,13 +35,14 @@ test('ART-012D-4-Fix-1 backend supports filters, conflict recheck and reopen', (
 
   const model = read('models/artist.js');
   assert.match(model, /async function detectNameProposalConflict/);
-  assert.match(model, /WHERE lower\(trim\(s\.as_alternatieve_spelling::text\)\)/);
+  assert.match(model, /normalizeArtistName\(row\.as_alternatieve_spelling\)/);
   assert.match(model, /FOR UPDATE/);
   assert.match(model, /NAME_PROPOSAL_CONFLICT/);
   assert.match(model, /SPELLING_INSERT_CONFLICT/);
   assert.match(model, /reviewed_by/);
   assert.match(model, /filteredSummary/);
-  assert.match(model, /allowed = \["new", "ignored", "conflict", "review_later"\]/);
+  assert.match(model, /allowed = \["new", "ignored", "review_later"\]/);
+  assert.match(model, /NAME_PROPOSAL_TRANSITIONS/);
 });
 
 test('ART-012D-4-Fix-1 frontend adds filters, status badges and safe actions', () => {

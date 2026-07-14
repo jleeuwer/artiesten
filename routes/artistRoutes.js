@@ -1,6 +1,7 @@
 const express = require("express");
 const asyncHandler = require("../utils/asyncHandler");
 const ctrl = require("../controllers/artistController");
+const linkCtrl = require("../controllers/artistMusicianLinkController");
 
 const router = express.Router();
 
@@ -37,6 +38,8 @@ router.post("/:id/discogs/spelling-proposals/canonical-preview", asyncHandler(ct
 router.post("/:id/discogs/spelling-proposals/canonical", asyncHandler(ctrl.executeDiscogsCanonicalRename));
 router.get("/:id/duplicate-candidates", asyncHandler(ctrl.findDuplicateCandidates));
 router.patch("/:id/favorite", asyncHandler(ctrl.setFavorite));
+router.post("/:artistKey/musician/link", asyncHandler(linkCtrl.link));
+router.delete("/:artistKey/musician/link", asyncHandler(linkCtrl.unlink));
 router.post("/:id/restore", asyncHandler(ctrl.restore));
 router.delete("/:id/hard", asyncHandler(ctrl.hardDelete));
 

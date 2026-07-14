@@ -842,3 +842,107 @@ docs/ART_UI_POLISH_1_Testcases_en_Runbook.md
 - Primary-image wijziging patcht direct lijst- en selectiestate.
 - 48 functionele testcase-ID’s zijn contractueel traceerbaar; implementatiecontracttests zijn toegevoegd.
 - Volgende backlogstap: ART-012D-4 volledig functioneel valideren en hardenen.
+
+---
+
+## 11-07-2026 — ART-012D-4-VAL-1 uitgewerkt
+
+Na functionele acceptatie van ART-UI-POLISH-1 is de volgende sprint uitgewerkt: **ART-012D-4-VAL-1 — Discogs naamvoorstellen reviewqueue validatie en hardening**.
+
+Belangrijkste besluiten:
+
+- geen nieuwe naamfunctionaliteit voordat de bestaande reviewqueue volledig aantoonbaar is;
+- Discogs blijft brondata; geen automatische lokale wijzigingen;
+- canonical rename en bulkacties blijven buiten scope;
+- generatie moet idempotent zijn en een verklaarbare summary geven;
+- apply controleert live op canonical/spelling bij dezelfde of andere artist;
+- statusovergangen worden centraal afgedwongen;
+- stale browserstate en gelijktijdige acties mogen geen dubbele of conflicterende spelling veroorzaken;
+- database-integratietests draaien transactioneel met expliciete opt-in en `leftovers=0`;
+- Chromium is de verplichte browser voor de E2E-hoofdflow; WebKit wordt niet verplicht;
+- alle commando's worden gedocumenteerd met `2>&1 | tee` logging.
+
+De functionele testbasis bevat 84 scenario's voor preflight, generatie, idempotentie, classificatie, statussen, apply, rollback, concurrency, filters/tellers, UI-feedback, security en packaging.
+
+Volgende volgorde na implementatie en acceptatie:
+
+1. ART-013B musician-in-band relatieverrijking;
+2. lokale biografie ontwerpen;
+3. ART-014 album-, release- en trackmodel.
+
+## 2026-07-11 — ART-012D-4-VAL-1 geïmplementeerd
+
+De Discogs naamvoorstellenreviewqueue is gehard met live canonical/spelling-conflictcontrole, centrale statusovergangen, stale-state bescherming, transactionele acties en een verklaarbare generation summary. Databasepreflight, migratie, verificatie en transactionele testbasis zijn toegevoegd.
+
+---
+
+## Besluit 2026-07-11 — ART-013B architectuur en bronvolgorde
+
+De musician-in-band-functionaliteit wordt functioneel geïntegreerd in de bestaande Artiesten-app en technisch als zelfstandig feature-domein ontwikkeld.
+
+De bestaande tabel `musician_in_band` blijft de definitieve lokale registratie. De gebruiker moet alle gegevens handmatig kunnen invoeren; externe bronnen zijn uitsluitend ondersteunend bij ontbrekende of onzekere kennis.
+
+Vastgestelde bronvolgorde:
+
+1. Discogs primair;
+2. MusicBrainz aanvullend;
+3. Wikidata daarna voor verificatie/aanvulling.
+
+Geen provider mag rechtstreeks lokale relaties aanmaken of overschrijven. Externe resultaten lopen later via proposals en expliciete review.
+
+De eerste sprint is ART-013B-1 en bevat alleen lokaal handmatig beheer, inclusief rol, periode, bron, opmerkingen, validatie, CRUD, twee contextweergaven en automatische testbasis.
+
+
+## ART-013B-1 implementatiestatus — 2026-07-12
+
+De concrete codesprint is opgeleverd. Handmatig beheer is modulair geïntegreerd in het Relatie-inzicht. De bestaande tabel `musician_in_band` blijft lokale waarheid. Preflight, migratie, verificatie, API, frontendfeature, duplicate/overlap/stale bescherming en automatische contracttests zijn aanwezig. Externe providers blijven vervolgscope: Discogs primair, MusicBrainz aanvullend, Wikidata daarna.
+
+## ART-013B-1-Fix-1 — database scripts volgen centrale .env-conventie
+
+De ART-013B-1 preflight, migratie, verificatie en database-integratietest laden automatisch de `.env` uit de applicatieroot. Zij gebruiken uitsluitend de bestaande variabelen `ARTIST_DB_CONTAINER`, `ARTIST_DB_USER`, `ARTIST_DB_NAME`, `ARTIST_DB_TEST_ALLOWED` en `ARTIST_DB_ENVIRONMENT`. De afwijkende `POSTGRES_*`-variabelen uit de eerste oplevering zijn verwijderd.
+
+## ART-013B-1-Fix-2 — compatibiliteit bestaand `musician_in_band`-schema
+De productiepreflight bevestigde dat `musician_in_band` bestaat en leeg is, maar dat de nieuwe technische sleutel `mb_musician_band_key` nog niet in het legacy schema aanwezig was. Fix-2 behandelt `mb_musician_key` en `mb_artist_key` als de bestaande functionele foreign-keykolommen en laat de migratie zelf `mb_musician_band_key` als identity-kolom toevoegen. De sleutel wordt uniek geïndexeerd zonder een eventueel bestaande primary key te vervangen.
+
+## 2026-07-12 — ART-013A-3 asymmetrisch artist/musician-model
+
+Besloten is de artist/musician-koppeling functioneel losser te maken zonder de bestaande kolom `musician.ar_artist_key` te vervangen.
+
+Definitieve ontwerpregels:
+
+- iedere actieve artist van type `person` heeft exact één musician;
+- een musician mag zelfstandig zonder artist bestaan;
+- bandleden hoeven daardoor niet als zelfstandige artist in de artiestenlijst te staan;
+- `musician_in_band` blijft naar musician verwijzen;
+- een standalone musician kan later aan een bestaande person-artist worden gekoppeld of naar een nieuwe artist worden gepromoveerd;
+- bestaande bandrelaties blijven bij promotie, artist-delete en merge behouden;
+- synchronisatie blijft uitsluitend artist → musician;
+- geen tweede `artist.ar_musician_key` en geen generieke koppeltabel;
+- externe bronnen blijven ondersteunend: Discogs primair, MusicBrainz aanvullend en Wikidata daarna.
+
+ART-013A-3 moet vóór ART-013B-2 worden geïmplementeerd, zodat externe bandledenvoorstellen niet onnodig nieuwe artistrecords hoeven te maken.
+
+## 2026-07-12 — ART-013A-3 geïmplementeerd
+
+Standalone musicians zijn geldig zonder artist. Nieuwe persoonsartists krijgen transactioneel één musician; bandleden kunnen direct zonder artist worden aangemaakt. De bestaande `musician_in_band`-relaties blijven leidend. Docker-migratie-, preflight-, verify- en integratietests zijn toegevoegd.
+
+## 2026-07-12 — ART-013B-2 ontwerpbesluiten
+
+- Bandledenondersteuning blijft onderdeel van de Artiesten-app, technisch als aparte featuremodule.
+- `musician_in_band` blijft lokale waarheid.
+- Handmatige invoer blijft altijd mogelijk.
+- Bronvolgorde: Discogs, daarna MusicBrainz, daarna Wikidata.
+- Externe data schrijft nooit rechtstreeks naar lokale relaties.
+- Eén generieke proposal- en sourcelaag voorkomt providerspecifieke dubbeltabellen.
+- Een Discogs-bandlid kan als standalone musician worden geaccepteerd zonder artist-record.
+
+## ART-013B-2 besluit
+Handmatige invoer blijft leidend. Discogs-resultaten worden voorstellen. Bestaande standalone musicians worden gematcht; een later aangemaakte person-artist wordt aan die musician gekoppeld zonder duplicatie.
+
+## ART-013B-2-Fix-4 — Proposal status timestamp precision
+- Fout-negatieve stale melding bij `Negeer`, `Later` of `Heropen` opgelost.
+- PostgreSQL microseconden worden niet meer exact met JSON-milliseconden in SQL vergeleken.
+- Statusmutatie gebruikt transactionele `FOR UPDATE` lock en millisecondevergelijking.
+
+### ART-013B-2-Fix-5
+Artist-aware matching toegevoegd. Bestaande artists worden ongeacht type gevonden; typeproblemen worden als datakwaliteitswaarschuwing zichtbaar en blokkeren acceptatie tot correctie.
