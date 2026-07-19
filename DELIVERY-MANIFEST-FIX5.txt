@@ -1,0 +1,11 @@
+Delivery: ART-UI-DETAILS-1 Fix 5 — Global all-or-nothing details toggle
+Date: 2026-07-19
+
+Changed:
+- One global Toon details / Verberg details button.
+- Songs, Alternatieve spellingen, Hitlijsten and Mergehistorie show/hide together.
+- Individual section headers are no longer interactive toggles.
+- Session-only preference through sessionStorage.
+- Updated source, production build, tests and documentation.
+- No database schema change; existing Docker/PostgreSQL no-op deployment scripts remain applicable.
+- node_modules excluded.

@@ -1,0 +1,56 @@
+ART-UI DETAIL- EN SCROLLHARDENING — COMPLETE OPLEVERING
+Datum: 2026-07-19
+
+Scope:
+- ART-013B-2-UX-1 compacte proposalmeldingen en stabiele actieknoppen
+- ART-013B-2-UX-2 scroll- en focusbehoud na proposalacties
+- ART-UI-DETAILS-1 inklapbare detailsecties
+- ART-UI-LABELS-1 nieuwe labels Songs en Alternatieve spellingen
+- ART-UI-SCROLL-2 resterende scrollhardening
+
+Inhoud:
+- complete applicatiebroncode
+- productiebuild in public/app
+- functioneel en technisch ontwerp
+- functionele en technische testgevallen
+- automatische contract- en regressietests
+- release notes en deploymentdocumentatie
+- Docker/PostgreSQL preflight, no-op migratie en verify
+
+Database-impact:
+- geen schemawijziging vereist
+- migratiescript is intentioneel een no-op en verifieert de bestaande container/database
+
+Belangrijkste commando's:
+- npm ci
+- npm --prefix client ci
+- npm run test:art-ui-detail-scroll:all
+- npm run test:art-ui-2:phase34
+- npm run test:art013b2:fix7
+- npm run test:art-ui-msg1-art012c-ux2
+- npm run build
+- npm run db:preflight:art-ui-detail-scroll
+- npm run db:migrate:art-ui-detail-scroll
+- npm run db:verify:art-ui-detail-scroll
+
+Validatie uitgevoerd:
+- sprintcontracttests: 4/4 geslaagd
+- databasescript-contracttests: 4/4 geslaagd
+- ART-UI-2 fase 3/4: 92/92 geslaagd
+- ART-013B-2 Fix-7: 3/3 geslaagd
+- ART-UI-MSG-1 + ART-012C-UX-2: 2/2 geslaagd
+- Vite productiebuild: geslaagd
+
+Packaging:
+- node_modules is niet opgenomen
+- .git is niet opgenomen
+
+Fix 1 (2026-07-19):
+- historische Sprint 6-contracttest aangepast aan de actuele labels Songs en Alternatieve spellingen;
+- Edit-modal gebruikt nu eveneens Alternatieve spellingen;
+- geen databasewijziging.
+
+Fix 4 (2026-07-19):
+- Updated stale ART-012D-3A-Fix-1 UI text contract assertion.
+- Current reviewqueue instruction and header remain covered.
+- No database migration required.
