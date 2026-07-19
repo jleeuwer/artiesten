@@ -12,7 +12,6 @@ const notes = fs.readFileSync('docs/PROJECT_NOTES.md', 'utf8');
 test('ART-012D-3A-Fix-1 makes Discogs spelling proposal flow explicit in UI', () => {
   assert.match(pageSource, /Koppel eerst een Discogs artist voordat naamvoorstellen beschikbaar zijn/);
   assert.match(pageSource, /Na koppeling kun je Discogs-namen via de reviewqueue beoordelen/);
-  assert.match(pageSource, /Gebruik de naamvoorstellen reviewqueue om Discogs-namen te beoordelen/);
   assert.match(pageSource, /Discogs naamvoorstellen reviewqueue/);
   assert.match(pageSource, /ART-012D-4-Fix-1/);
   assert.doesNotMatch(pageSource, /await loadDiscogsSpellingProposals\(\)/);

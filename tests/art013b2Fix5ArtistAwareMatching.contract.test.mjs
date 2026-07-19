@@ -15,10 +15,10 @@ test('matching diagnosticeert person, missing type en verkeerd type apart',()=>{
  for(const status of ['matched_artist_person','artist_type_missing','artist_type_conflict']) assert.match(service,new RegExp(status));
 });
 
-test('acceptatie blokkeert onbeoordeelde typeconflicten en koppelt person artist transactioneel',()=>{
+test('acceptatie blokkeert ontbrekend of ambigu type en koppelt person artist transactioneel',()=>{
  const service=read('services/musicianInBandProposalService.js');
  assert.match(service,/MIB_ARTIST_MATCH_REVIEW_REQUIRED/);
- assert.match(service,/artistKey: artist\?\.ar_artist_key/);
+ assert.match(service,/artistKey: createStandalone \? null : \(artist\?\.ar_artist_key/);
  assert.match(service,/ar_artist_type !== 'person'/);
 });
 

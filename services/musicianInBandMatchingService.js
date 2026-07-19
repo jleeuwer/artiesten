@@ -27,7 +27,7 @@ async function classify(candidate, client) {
     if (!artist.artist_type || artist.artist_type === 'unknown') {
       return { matchStatus:'artist_type_missing', proposalStatus:'conflict', confidence:Number(artist.confidence), conflictReason:'Bestaande artist gevonden, maar het artisttype ontbreekt of is onbekend. Controleer en corrigeer eerst de artist.', musicianKey:null, artistKey:artist.artist_key, relationKey:null };
     }
-    return { matchStatus:'artist_type_conflict', proposalStatus:'conflict', confidence:Number(artist.confidence), conflictReason:`Bestaande artist gevonden met type ${artist.artist_type}. Alleen type person kan als bandlid worden gekoppeld.`, musicianKey:null, artistKey:artist.artist_key, relationKey:null };
+    return { matchStatus:'artist_type_conflict', proposalStatus:'new', confidence:Number(artist.confidence), conflictReason:`Naamkandidaat gevonden (${artist.artist_name}) met type ${artist.artist_type}. Deze act is geen persoon en blokkeert het aanmaken van een standalone musician niet.`, musicianKey:null, artistKey:artist.artist_key, relationKey:null };
   }
 
   return { matchStatus:'new_musician', proposalStatus:'new', confidence:40, conflictReason:null, musicianKey:null, artistKey:null, relationKey:null };

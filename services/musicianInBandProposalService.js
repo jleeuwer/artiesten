@@ -30,6 +30,41 @@ async function generate(bandArtistKey) {
   } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
 }
 
+async function rematch(bandArtistKey) {
+  const client = await pool.connect();
+  const summary = { processed: 0, changed: 0, matched_musician: 0, matched_relation: 0, matched_artist_person: 0, artist_type_missing: 0, artist_type_conflict: 0, ambiguous: 0, new_musician: 0 };
+  try {
+    await client.query('BEGIN');
+    const rows = await Proposal.listForRematch(bandArtistKey, client);
+    for (const proposal of rows) {
+      const classification = await Matching.classify({
+        bandArtistKey: proposal.band_artist_key,
+        personName: proposal.proposed_person_name,
+        sourcePersonExternalId: proposal.source_person_external_id,
+        sourceBandExternalId: proposal.source_band_external_id,
+        sourceRelationshipId: proposal.source_relationship_id,
+        sourceType: proposal.source_type,
+        role: proposal.proposed_role,
+        dateFrom: proposal.proposed_date_from,
+        dateTo: proposal.proposed_date_to,
+        sourceUrl: proposal.source_url,
+        rawPayload: proposal.raw_payload
+      }, client);
+      summary.processed += 1;
+      summary[classification.matchStatus] = (summary[classification.matchStatus] || 0) + 1;
+      await Proposal.updateClassification(proposal.proposal_key, classification, client);
+      summary.changed += 1;
+    }
+    await client.query('COMMIT');
+    return summary;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function list(bandArtistKey, filters) { return { items: await Proposal.list(bandArtistKey, filters), counts: await Proposal.counts(bandArtistKey) }; }
 
 async function setStatus(id, status, expectedUpdatedAt) {
@@ -72,18 +107,19 @@ async function accept(id, body={}) {
     if (body.expectedUpdatedAt && new Date(body.expectedUpdatedAt).getTime() !== new Date(proposal.updated_at).getTime()) throw appError('Het voorstel is intussen gewijzigd.', 'STALE_MIB_PROPOSAL', 409);
     if (!['new','review_later','conflict'].includes(proposal.proposal_status)) throw appError('Dit voorstel kan niet worden toegepast.', 'INVALID_MIB_PROPOSAL_TRANSITION', 409);
 
-    if (['artist_type_missing','artist_type_conflict','ambiguous'].includes(proposal.match_status)) {
+    if (['artist_type_missing','ambiguous'].includes(proposal.match_status)) {
       throw appError('Dit voorstel heeft eerst controle of correctie van de bestaande artist nodig.', 'MIB_ARTIST_MATCH_REVIEW_REQUIRED', 409, { artistKey: proposal.proposed_artist_key, matchStatus: proposal.match_status });
     }
+    const createStandalone = body.createStandalone === true || ['artist_type_conflict'].includes(proposal.match_status);
     let musicianKey = Number(body.musicianKey || proposal.proposed_musician_key || 0) || null;
     let relationKey = Number(proposal.proposed_relation_key || 0) || null;
     if (!musicianKey) {
       let artist = null;
-      if (proposal.proposed_artist_key) {
+      if (proposal.proposed_artist_key && !createStandalone) {
         artist = (await client.query(`SELECT ar_artist_key, ar_artist_name, ar_artist_dateofbirth::text, ar_artist_passing::text, ar_website_url, COALESCE(ar_artist_type,'unknown') AS ar_artist_type FROM public.artist WHERE ar_artist_key=$1 FOR UPDATE`, [proposal.proposed_artist_key])).rows[0] || null;
         if (!artist || artist.ar_artist_type !== 'person') throw appError('De gematchte artist is niet als persoon geregistreerd.', 'MIB_ARTIST_TYPE_CORRECTION_REQUIRED', 409, { artistKey: proposal.proposed_artist_key });
       }
-      const created = await Musician.create({ artistKey: artist?.ar_artist_key || null, name: artist?.ar_artist_name || proposal.proposed_person_name, dateOfBirth:artist?.ar_artist_dateofbirth || null, passingDate:artist?.ar_artist_passing || null, websiteUrl:artist?.ar_website_url || null, notes:'Aangemaakt vanuit Discogs bandledenvoorstel', allowDuplicate:Boolean(body.allowDuplicate) }, client);
+      const created = await Musician.create({ artistKey: createStandalone ? null : (artist?.ar_artist_key || null), name: createStandalone ? proposal.proposed_person_name : (artist?.ar_artist_name || proposal.proposed_person_name), dateOfBirth:artist?.ar_artist_dateofbirth || null, passingDate:artist?.ar_artist_passing || null, websiteUrl:artist?.ar_website_url || null, notes:'Aangemaakt vanuit Discogs bandledenvoorstel', allowDuplicate:Boolean(body.allowDuplicate) }, client);
       musicianKey = created.musician_key;
     }
     if (!relationKey) {
@@ -106,4 +142,4 @@ async function accept(id, body={}) {
     return { proposal:updated.rows[0], musicianKey, relationKey };
   } catch(e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
 }
-module.exports = { generate, list, setStatus, accept };
+module.exports = { generate, rematch, list, setStatus, accept };

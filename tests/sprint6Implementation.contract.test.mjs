@@ -45,8 +45,8 @@ test('Sprint 6 frontend includes favorite filter, sort and bottom relation panel
   assert.match(component, /Terug naar artiestenlijst/);
   assert.match(component, /scrollIntoView/);
   assert.match(component, /relationPanelRef/);
-  assert.match(component, /File details/);
-  assert.match(component, /Artiesten spelling/);
+  assert.match(component, /title="Songs"/);
+  assert.match(component, /title="Alternatieve spellingen"/);
   assert.match(component, /Hitlijsten/);
   assert.match(component, /getArtistRelations/);
   assert.match(component, /setArtistFavorite/);

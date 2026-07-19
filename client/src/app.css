@@ -221,11 +221,10 @@
   border-radius: 0.85rem;
   background: color-mix(in srgb, var(--artist-surface) 94%, transparent);
   padding: 1rem;
-  max-height: min(76vh, 64rem);
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  scroll-padding-top: 1rem;
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+  scroll-padding-top: 0;
 }
 
 .artist-relation-header {
@@ -251,8 +250,11 @@
 }
 
 .artist-relation-table-scroll {
-  max-height: 18rem;
-  overflow: auto;
+  width: 100%;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-gutter: stable;
 }
 
 .artist-relation-card table {
@@ -312,7 +314,7 @@
 }
 
 .artist-relation-grid-compact .artist-relation-table-scroll {
-  max-height: 12rem;
+  max-height: none;
 }
 
 .artist-relation-grid-compact .artist-relation-card {
@@ -460,9 +462,9 @@
 
 .artist-discogs-results-wrap {
   width: 100%;
-  max-height: 22rem;
+  max-height: none;
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: visible;
   padding-right: 0.75rem;
   padding-bottom: 1rem;
   scrollbar-gutter: stable both-edges;
@@ -563,8 +565,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
   gap: 0.75rem;
-  max-height: 28rem;
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
   padding: 0.25rem;
 }
 
@@ -866,4 +868,248 @@
 /* ART-UI-POLISH-1-Fix-3 - overledenstatus in het daadwerkelijke Edit-scherm */
 .artist-edit-deceased-indicator {
   margin-right: 0.15rem;
+}
+
+/* ART-UI-2 Fase 1/2 — één primaire paginascroll en een niet-genest detailgebied.
+   Businesscomponenten blijven ongewijzigd; alleen scroll ownership wordt gehard. */
+.artist-workspace-table-region {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-gutter: stable;
+}
+
+.artist-workspace-detail-region {
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+  scroll-padding-top: 0;
+}
+
+/* Detailtabellen mogen horizontaal scrollen, maar maken geen tweede verticale
+   scrolllaag binnen het relatiepaneel. Modals/offcanvas vallen buiten deze scope. */
+.artist-workspace-detail-region .artist-relation-table-scroll {
+  width: 100%;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-gutter: stable;
+}
+
+.artist-workspace-detail-region .artist-discogs-results-wrap {
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior: auto;
+}
+
+.artist-workspace-detail-region .artist-discogs-image-grid {
+  max-height: none;
+  overflow: visible;
+}
+
+/* Development-only scroll inventory. Activate by adding data-scroll-debug=true
+   to .artist-app-root; production layout is unaffected while disabled. */
+.artist-app-root[data-scroll-debug='true'] [data-scroll-container] {
+  outline: 2px dashed color-mix(in srgb, var(--artist-accent-strong) 70%, transparent);
+  outline-offset: 2px;
+}
+
+.artist-app-root[data-scroll-debug='true'] [data-scroll-container]::before {
+  content: attr(data-scroll-container);
+  display: inline-block;
+  margin: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  background: var(--artist-accent-strong);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* ART-UI-2 Fase 3/4 — genormaliseerde tabel- en embedded scroll ownership. */
+.artist-workspace-phase34 {
+  min-width: 0;
+}
+
+.artist-workspace-standalone {
+  overflow: visible;
+}
+
+.artist-workspace-embedded {
+  max-height: calc(100dvh - 1rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  padding-right: 0.15rem;
+}
+
+.artist-table-viewport {
+  width: 100%;
+  min-height: 18rem;
+  max-height: clamp(22rem, 50dvh, 42rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+  scroll-behavior: auto;
+}
+
+.artist-table-phase34 {
+  min-width: 78rem;
+}
+
+.artist-table-phase34 thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--artist-panel);
+  box-shadow: inset 0 -1px 0 var(--artist-border);
+}
+
+.artist-table-viewport:focus-visible {
+  outline: 2px solid var(--artist-accent);
+  outline-offset: 2px;
+}
+
+.artist-workspace-pagination {
+  position: relative;
+  z-index: 1;
+}
+
+.artist-profile-section-thumbnail {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--artist-border);
+  background: var(--artist-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-height: 720px) {
+  .artist-table-viewport {
+    min-height: 14rem;
+    max-height: clamp(16rem, 42dvh, 26rem);
+  }
+}
+
+@media (max-width: 768px) {
+  .artist-table-viewport {
+    min-height: 16rem;
+    max-height: 44dvh;
+  }
+
+  .artist-workspace-embedded {
+    max-height: 100dvh;
+  }
+}
+
+/* ART-UI-MSG-1: central severity-aware notification presentation. */
+.artist-notification-container .toast { min-width: min(420px, calc(100vw - 2rem)); }
+.artist-notification-container .toast-header .bi { font-size: 1rem; }
+.artist-notification-container .toast[role="alert"] { box-shadow: 0 .5rem 1.25rem rgba(0,0,0,.2); }
+
+/* ART-UI-SCROLL-2 / ART-013B-2-UX-1/2 / ART-UI-DETAILS-1 */
+.discogs-member-proposal-table-wrap {
+  max-height: min(62dvh, 42rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+  scroll-behavior: auto;
+}
+
+.discogs-member-proposal-table {
+  min-width: 72rem;
+  table-layout: fixed;
+}
+
+.discogs-member-proposal-table th:nth-child(1) { width: 15%; }
+.discogs-member-proposal-table th:nth-child(2) { width: 21%; }
+.discogs-member-proposal-table th:nth-child(3) { width: 22%; }
+.discogs-member-proposal-table th:nth-child(4) { width: 10%; }
+.discogs-member-proposal-table th:nth-child(5) { width: 32%; }
+
+.discogs-member-proposal-classification,
+.discogs-member-proposal-actions {
+  min-width: 0;
+}
+
+.discogs-member-proposal-message {
+  max-width: 100%;
+  margin-top: .25rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  line-height: 1.25;
+}
+
+.discogs-member-proposal-actionbar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: .25rem;
+  min-width: max-content;
+  white-space: nowrap;
+}
+
+.discogs-member-proposal-actions {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.artist-collapsible-section {
+  padding: 0;
+  overflow: clip;
+}
+
+.artist-collapsible-section-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: .75rem .85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.artist-collapsible-section-toggle:hover,
+.artist-collapsible-section-toggle:focus-visible {
+  background: color-mix(in srgb, var(--artist-accent) 9%, transparent);
+}
+
+.artist-collapsible-section-toggle:focus-visible {
+  outline: 2px solid var(--artist-accent);
+  outline-offset: -2px;
+}
+
+.artist-collapsible-section-body {
+  padding: 0 .85rem .85rem;
+}
+
+.artist-workspace-detail-region,
+.artist-relation-grid,
+.artist-relation-card {
+  overflow-anchor: none;
+}
+
+.artist-workspace-embedded {
+  scroll-behavior: auto;
+  overflow-anchor: none;
+}
+
+/* ART-UI-DETAILS-1 Fix 2: author CSS can override the browser's native
+   hidden presentation. Keep collapsed relation-section bodies truly hidden. */
+.artist-collapsible-section-body[hidden] {
+  display: none !important;
 }

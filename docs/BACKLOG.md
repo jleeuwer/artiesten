@@ -1437,3 +1437,49 @@ Discogs primair, reviewqueue, expliciete acceptatie, generieke bronhistorie. Ver
 - Diagnoseer ontbrekend/unknown artisttype en verkeerd artisttype.
 - Blokkeer nieuwe musician zolang een relevante artistmatch niet is beoordeeld.
 - Person-artist zonder musician kan transactioneel worden gekoppeld bij acceptatie.
+
+## ART-UI-2 — Scroll- en paneelstructuur
+
+### Fase 1/2 — geïmplementeerd 2026-07-14
+- scrollcontainers geïnventariseerd en development-only zichtbaar te maken;
+- relatie-/detailgebied gebruikt geen eigen verticale scroll meer;
+- detailtabellen, Discogs-resultaten en imagegrid gebruiken de primaire paginascroll;
+- modals en offcanvas behouden zelfstandige body-scroll;
+- lokale browseracceptatie voor trackpad, embedded en responsive blijft vereist.
+
+### Fase 3 — backlog
+- bepalen of artiestentabel een begrensde verticale scroll nodig heeft;
+- sticky header en responsieve hoogte;
+- expliciet scrollpositiebehoud en resetregels;
+- Chromium/visuele regressies.
+
+## ART-013B-2-Fix-6 — Local proposal rematching
+Status: geïmplementeerd. Bestaande Discogs-bandledenvoorstellen worden bij openen van de queue opnieuw tegen actuele lokale artist-, musician- en bandrelatiedata gematcht. Geen externe API-call of databasemigratie nodig.
+
+### Fase 3/4 — ontwerp gereed 2026-07-14
+- responsive begrensde tabelviewport met sticky header;
+- expliciet preserve/resetcontract voor tabelscroll;
+- oude detailstate direct wissen bij nieuwe zoekcontext;
+- bescherming tegen stale async detailresponses;
+- standalone documentscroll en embedded workspace-scroll als expliciete owners;
+- tijdelijke feature flag en rollbackpad;
+- 80 functionele en technische testcases;
+- geen database- of API-wijziging.
+
+## ART-UI-2 Fase 3/4 — geïmplementeerd
+
+- Responsive artiestentabelviewport met sticky header.
+- Standalone/embedded scrollownership.
+- Scroll reset/preservecontract.
+- Oude detailstate wissen bij nieuwe zoekcontext.
+- Inklapbare Discogs-profielfotosectie.
+- Browseracceptatie Mac-trackpad en Shellstarter embedded nog uitvoeren.
+
+## ART-012B-Fix-2 — Diacritic-tolerante Discogs search — gerealiseerd
+
+- Unicode NFC-normalisatie.
+- Accentloze fallbackquery bij onvoldoende resultaat.
+- Deduplicatie op Discogs artist-ID.
+- Lokale ranking met exacte naam als hoogste resultaat.
+- Geen mutatie van lokale artiestnamen.
+- Geen database-migratie.

@@ -111,6 +111,7 @@ export const api = {
   updateMusicianInBand: (relationKey, payload) => request(`/api/musician-in-band/${relationKey}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteMusicianInBand: (relationKey, expectedUpdatedAt = null) => request(`/api/musician-in-band/${relationKey}`, { method: "DELETE", body: JSON.stringify({ expectedUpdatedAt }) }),
   generateMusicianInBandProposals: (artistKey) => request(`/api/musician-in-band-proposals/bands/${artistKey}/generate`, { method: "POST", body: JSON.stringify({}) }),
+  rematchMusicianInBandProposals: (artistKey) => request(`/api/musician-in-band-proposals/bands/${artistKey}/rematch`, { method: "POST", body: JSON.stringify({}) }),
   listMusicianInBandProposals: (artistKey, { status = "", matchStatus = "", q = "" } = {}) => request(`/api/musician-in-band-proposals/bands/${artistKey}?status=${encodeURIComponent(status)}&matchStatus=${encodeURIComponent(matchStatus)}&q=${encodeURIComponent(q)}`),
   updateMusicianInBandProposalStatus: (proposalKey, payload) => request(`/api/musician-in-band-proposals/${proposalKey}/status`, { method: "POST", body: JSON.stringify(payload) }),
   acceptMusicianInBandProposal: (proposalKey, payload) => request(`/api/musician-in-band-proposals/${proposalKey}/accept`, { method: "POST", body: JSON.stringify(payload) }),

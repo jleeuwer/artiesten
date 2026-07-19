@@ -1244,3 +1244,74 @@ Als Discogs-acceptatie nog faalt op `ck_musician_in_band_source_type`, voer de A
 
 ### ART-013B-2-Fix-5
 Discogs-bandledenmatching controleert nu ook bestaande artists en alternatieve spellingen. Voer na installatie opnieuw `npm run db:migrate:art013b2` uit.
+
+## ART-UI-2 Fase 1/2 — scrollgedrag
+
+Het relatie-inzicht onder de artiestentabel groeit voortaan mee met de pagina en bevat geen eigen verticale scroll meer. Brede detailtabellen blijven horizontaal scrollbaar. Modals en offcanvas behouden hun eigen body-scroll.
+
+Development-only scrollmarkering:
+
+```env
+VITE_ARTIST_UI_SCROLL_DEBUG=true
+```
+
+Zie:
+- `docs/ART_UI_2_FASE_1_2_Scroll_Paneelstructuur_Functioneel_Technisch_Ontwerp.md`
+- `docs/ART_UI_2_FASE_1_2_Testcases_en_Runbook.md`
+
+## ART-UI-2 Fase 1/2 — scrollaudit
+
+ART-UI-2 verwijdert geneste verticale scroll uit het detailgebied. Controleer de scrollarchitectuur na CSS-wijzigingen met:
+
+```bash
+mkdir -p logs &&
+npm run ui:scroll:audit 2>&1 |
+tee "logs/art-ui2-scroll-audit-$(date +%Y%m%d-%H%M%S).log"
+```
+
+De sprint vereist geen database-migratie.
+
+## ART-013B-2-Fix-6
+Discogs-bandledenvoorstellen worden bij het openen van de queue lokaal opnieuw gematcht. Gebruik **Lokale matches vernieuwen** na een correctie in artist; **Discogs opnieuw ophalen** is alleen voor een nieuwe externe API-opvraag.
+
+## ART-UI-2 Fase 3/4 — ontwerp
+
+De vervolgfase voor artiestentabel en embedded scrollgedrag is uitgewerkt in:
+
+- `docs/ART_UI_2_FASE_3_4_Tabel_Embedded_Functioneel_Technisch_Ontwerp.md`
+- `docs/ART_UI_2_FASE_3_4_Testcases_en_Runbook.md`
+- `docs/ART_UI_2_FASE_3_4_Sprintmanifest.md`
+
+Designcontract uitvoeren:
+
+```bash
+mkdir -p logs && npm run test:art-ui-2:phase34:design 2>&1 | tee "logs/art-ui2-phase34-design-$(date +%Y%m%d-%H%M%S).log"
+```
+
+Deze UI-sprint vereist geen PostgreSQL-migratie.
+
+## ART-UI-2 Fase 3/4
+
+De artiestentabel gebruikt één responsive viewport met sticky header. Standalone gebruikt de document-scroll; embedded mode gebruikt één workspace-scroll. De Discogs-profielfotosectie is ingeklapt wanneer al een primaire foto is gekozen.
+
+```bash
+mkdir -p logs && npm run test:art-ui-2:phase34 2>&1 | tee "logs/art-ui2-phase34-$(date +%Y%m%d-%H%M%S).log"
+```
+
+```bash
+mkdir -p logs && npm run ui:scroll:audit 2>&1 | tee "logs/art-ui2-scroll-audit-$(date +%Y%m%d-%H%M%S).log"
+```
+
+Er is geen database-migratie nodig.
+
+## ART-012B-Fix-2 — Discogs zoeken met diakritische tekens
+
+Discogs-zoekopdrachten gebruiken nu naast de originele artiestnaam ook een Unicode-genormaliseerde en accentloze zoekvariant. Resultaten worden gededupliceerd en de correcte exacte naam wordt bovenaan geplaatst.
+
+Test:
+
+```bash
+mkdir -p logs && npm run test:art012b:diacritics 2>&1 | tee "logs/art012b-diacritics-$(date +%Y%m%d-%H%M%S).log"
+```
+
+Deze fix heeft geen database-migratie nodig.

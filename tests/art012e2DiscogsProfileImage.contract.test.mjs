@@ -47,6 +47,7 @@ test('ART-012E-2 frontend shows profile photo grid and calls primary image API',
   const api = read('client/src/api.js');
   const page = read('client/src/components/ArtistPageContent.jsx');
   const css = read('client/src/app.css');
+  const profileSection = read('client/src/features/art-ui-2/DiscogsProfileImageSection.jsx');
 
   assert.match(api, /getDiscogsImages/);
   assert.match(api, /setPrimaryDiscogsImage/);
@@ -55,11 +56,12 @@ test('ART-012E-2 frontend shows profile photo grid and calls primary image API',
   assert.match(page, /function DiscogsProfileImage/);
   assert.match(page, /relationPrimaryImage/);
   assert.match(page, /relationDiscogsImages/);
-  assert.match(page, /Profielfoto uit Discogs images/);
-  assert.match(page, /Maak profielfoto/);
-  assert.match(page, /Huidige profielfoto/);
+  assert.match(page, /<DiscogsProfileImageSection/);
+  assert.match(profileSection, /Profielfoto uit Discogs images/);
+  assert.match(profileSection, /Maak profielfoto/);
+  assert.match(profileSection, /Huidige profielfoto/);
   assert.match(page, /Primaire profielfoto bijgewerkt/);
-  assert.match(page, /artist-discogs-image-grid/);
+  assert.match(profileSection, /artist-discogs-image-grid/);
   assert.match(page, /await loadRelations\(\{ \.\.\.relationArtist, \.\.\.artistPatch \}, \{ scrollToPanel: false \}\)/);
 
   const modal = read('client/src/components/ArtistFormModal.jsx');

@@ -91,6 +91,29 @@ async function upsert(candidate, classification, client = pool) {
     RETURNING proposal_key, (xmax=0) AS inserted`, values)).rows[0];
 }
 
+async function listForRematch(bandArtistKey, client = pool) {
+  return (await client.query(`SELECT proposal_key, band_artist_key, source_type, source_band_external_id, source_person_external_id,
+      source_relationship_id, proposed_person_name, proposed_role, proposed_date_from, proposed_date_to, source_url, raw_payload,
+      proposal_status, updated_at
+    FROM public.musician_in_band_proposal
+    WHERE band_artist_key=$1 AND proposal_status <> 'accepted'
+    ORDER BY proposal_key`, [bandArtistKey])).rows;
+}
+
+async function updateClassification(id, classification, client = pool) {
+  return (await client.query(`UPDATE public.musician_in_band_proposal
+    SET proposed_musician_key=$2, proposed_artist_key=$3, proposed_relation_key=$4,
+        match_status=$5, confidence_score=$6, conflict_reason=$7,
+        proposal_status=CASE
+          WHEN proposal_status IN ('ignored','review_later') THEN proposal_status
+          ELSE $8
+        END,
+        updated_at=now()
+    WHERE proposal_key=$1
+    RETURNING *`, [id, classification.musicianKey, classification.artistKey, classification.relationKey,
+      classification.matchStatus, classification.confidence, classification.conflictReason, classification.proposalStatus])).rows[0] || null;
+}
+
 async function updateStatus(id, status, client = pool) {
   const result = await client.query(`UPDATE public.musician_in_band_proposal
     SET proposal_status=$2, reviewed_at=now(), updated_at=now()
@@ -99,4 +122,4 @@ async function updateStatus(id, status, client = pool) {
   return result.rows[0] || null;
 }
 
-module.exports = { getBandDiscogsReference, list, counts, getById, findMusicianMatches, findArtistMatches, findExistingRelation, upsert, updateStatus };
+module.exports = { getBandDiscogsReference, list, counts, getById, findMusicianMatches, findArtistMatches, findExistingRelation, upsert, listForRematch, updateClassification, updateStatus };

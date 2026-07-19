@@ -21,10 +21,10 @@ test("ART-UI-1A voegt paneelnavigatie toe voor onderste detailgebied", () => {
   assert.match(css, /artist-relation-section-nav/);
 });
 
-test("ART-UI-1A maakt scrollgedrag van relatiepaneel voorspelbaar", () => {
-  assert.match(css, /\.artist-relation-panel[\s\S]*overflow-y: auto/);
-  assert.match(css, /overscroll-behavior: contain/);
-  assert.match(css, /overflow-x: hidden/);
+test("ART-UI-1A/ART-UI-2 houdt het relatiepaneel in de primaire paginascroll", () => {
+  assert.match(css, /\.artist-relation-panel\s*\{[\s\S]*?max-height:\s*none/);
+  assert.match(css, /\.artist-relation-panel\s*\{[\s\S]*?overflow:\s*visible/);
+  assert.doesNotMatch(css, /\.artist-relation-panel\s*\{[^}]*overflow-y:\s*(?:auto|scroll)/);
 });
 
 test("ART-UI-1A toont externe Discogs profieltekst vanuit relations", () => {

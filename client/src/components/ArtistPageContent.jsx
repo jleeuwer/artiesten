@@ -1,12 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Container, Button, Table, Form, InputGroup, Alert, Spinner, Badge,
-  Toast, ToastContainer, Offcanvas
+  Offcanvas
 } from "react-bootstrap";
 import { api } from "../api.js";
 import ArtistFormModal from "./ArtistFormModal.jsx";
 import ConfirmModal from "./ConfirmModal.jsx";
 import BandMembershipPanel from "../features/musician-in-band/BandMembershipPanel.jsx";
+import ArtistWorkspaceLayout from "../features/art-ui-2/ArtistWorkspaceLayout.jsx";
+import ArtistTableViewport from "../features/art-ui-2/ArtistTableViewport.jsx";
+import DiscogsProfileImageSection from "../features/art-ui-2/DiscogsProfileImageSection.jsx";
+import AppNotification, { normalizeNotificationSeverity } from "./AppNotification.jsx";
 
 function fmtDate(v) {
   if (!v) return "";
@@ -67,6 +71,19 @@ function countLabel(value, singular, plural) {
 
 function EmptyState({ children }) {
   return <div className="text-muted small py-2">{children}</div>;
+}
+
+function RelationDetailSection({ id, title, children, className = "" }) {
+  return (
+    <section id={`artist-relation-section-${id}`} className={`artist-relation-card artist-detail-section ${className}`.trim()}>
+      <div className="artist-detail-section-header">
+        <h3 className="h6 mb-0">{title}</h3>
+      </div>
+      <div className="artist-collapsible-section-body">
+        {children}
+      </div>
+    </section>
+  );
 }
 
 function artistTypeLabel(value) {
@@ -278,6 +295,7 @@ export default function ArtistPageContent({ shellContext = {} }) {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [sort, setSort] = useState("favorite_first");
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [mergeStatus, setMergeStatus] = useState("active");
@@ -285,8 +303,15 @@ export default function ArtistPageContent({ shellContext = {} }) {
   const limit = 25;
   const [loading, setLoading] = useState(false);
   const [pageError, setPageError] = useState("");
-  const [toast, setToast] = useState({ show: false, message: "", bg: "dark", action: null });
-  const notify = (message, bg = "dark", action = null) => setToast({ show: true, message, bg, action });
+  const [toast, setToast] = useState({ show: false, message: "", severity: "info", action: null, code: "" });
+  const notify = (message, severity = "info", action = null, options = {}) => setToast({
+    show: true,
+    message,
+    severity: normalizeNotificationSeverity(severity),
+    action,
+    title: options.title || "",
+    code: options.code || "",
+  });
   const undoTimerRef = useRef(null);
   const [lastDeleted, setLastDeleted] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -369,7 +394,23 @@ export default function ArtistPageContent({ shellContext = {} }) {
   const reviewLimit = 25;
   const artistTableRef = useRef(null);
   const relationPanelRef = useRef(null);
+  const artistListRequestRef = useRef(0);
   const [relationPanelView, setRelationPanelView] = useState("all");
+  const [showRelationDetails, setShowRelationDetails] = useState(() => {
+    try {
+      return window.sessionStorage.getItem("artist.showRelationDetails") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem("artist.showRelationDetails", String(showRelationDetails));
+    } catch {
+      // Session storage is optional; the UI remains functional without it.
+    }
+  }, [showRelationDetails]);
 
   const page = useMemo(() => Math.floor(offset / limit) + 1, [offset]);
   const maxPage = useMemo(() => Math.max(1, Math.ceil(total / limit)), [total]);
@@ -385,6 +426,7 @@ export default function ArtistPageContent({ shellContext = {} }) {
     if (!silent) setLoading(true);
     setPageError("");
 
+    const requestId = ++artistListRequestRef.current;
     try {
       const data = await api.listArtists({
         search: nextSearch,
@@ -394,6 +436,7 @@ export default function ArtistPageContent({ shellContext = {} }) {
         favoriteOnly: nextFavoriteOnly,
         mergeStatus: nextMergeStatus,
       });
+      if (requestId !== artistListRequestRef.current) return;
       setItems(data.items);
       setTotal(data.total);
       const deletedCount = await api.listArtists({ search: "", limit: 1, offset: 0, onlyDeleted: true });
@@ -760,11 +803,21 @@ export default function ArtistPageContent({ shellContext = {} }) {
       setItems((prev) => prev.map((item) => (
         Number(item.ar_artist_key) === Number(linkedArtist.ar_artist_key) ? { ...item, ...linkedArtist, has_discogs_link: true } : item
       )));
-      notify(`Discogs artist gekoppeld: #${discogsDetail.discogs_artist_id} ${discogsDetail.discogs_name}. Gebruik de naamvoorstellen reviewqueue om Discogs-namen te beoordelen.`, "success");
+      const linkedDiscogsName = discogsDetail.discogs_name;
+      const linkedDiscogsId = discogsDetail.discogs_artist_id;
+      setDiscogsResults(null);
+      setDiscogsDetail(null);
+      setDiscogsDetailError("");
+      setDiscogsLinkResult(null);
+      notify(`Discogs artist gekoppeld: #${linkedDiscogsId} ${linkedDiscogsName}.`, "success", null, { title: "Discogs-koppeling voltooid" });
       await Promise.all([
         load({ silent: true }),
         loadRelations(linkedArtist, { scrollToPanel: false }),
       ]);
+      window.requestAnimationFrame(() => {
+        relationPanelRef.current?.focus?.({ preventScroll: true });
+        relationPanelRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      });
     } catch (e) {
       const msg = pickNiceMessage(e);
       setDiscogsLinkError(msg);
@@ -815,6 +868,7 @@ export default function ArtistPageContent({ shellContext = {} }) {
       const msg = pickNiceMessage(e);
       setDiscogsPrimaryImageError(msg);
       notify(msg, "danger");
+      throw e;
     } finally {
       setDiscogsPrimaryImageLoading("");
     }
@@ -852,14 +906,26 @@ export default function ArtistPageContent({ shellContext = {} }) {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
   }, []);
 
+  function clearSelectedArtistContext() {
+    artistListRequestRef.current += 1;
+    setSelectedArtist(null);
+    setRelations(null);
+    setRelationsError("");
+    resetDuplicateWorkflowState();
+    resetDiscogsWorkflowState();
+  }
+
   async function onSearchSubmit(e) {
     e.preventDefault();
+    clearSelectedArtistContext();
+    setAppliedSearch(search);
     setOffset(0);
     await load({ nextOffset: 0 });
   }
 
   async function onSortChange(e) {
     const nextSort = e.target.value;
+    clearSelectedArtistContext();
     setSort(nextSort);
     setOffset(0);
     await load({ nextOffset: 0, nextSort });
@@ -867,6 +933,7 @@ export default function ArtistPageContent({ shellContext = {} }) {
 
   async function onFavoriteOnlyChange(e) {
     const nextFavoriteOnly = e.target.checked;
+    clearSelectedArtistContext();
     setFavoriteOnly(nextFavoriteOnly);
     setOffset(0);
     await load({ nextOffset: 0, nextFavoriteOnly });
@@ -874,13 +941,16 @@ export default function ArtistPageContent({ shellContext = {} }) {
 
   async function onMergeStatusChange(e) {
     const nextMergeStatus = e.target.value;
+    clearSelectedArtistContext();
     setMergeStatus(nextMergeStatus);
     setOffset(0);
     await load({ nextOffset: 0, nextMergeStatus });
   }
 
   async function clearFilters() {
+    clearSelectedArtistContext();
     setSearch("");
+    setAppliedSearch("");
     setSort("favorite_first");
     setFavoriteOnly(false);
     setMergeStatus("active");
@@ -1294,9 +1364,12 @@ export default function ArtistPageContent({ shellContext = {} }) {
   const RootTag = embeddedInShell ? 'div' : Container;
   const rootProps = embeddedInShell ? {} : { fluid: shellMode };
   const rootSpacingClass = embeddedInShell ? '' : 'py-4';
+  const scrollDebug = import.meta.env.DEV && String(import.meta.env.VITE_ARTIST_UI_SCROLL_DEBUG || '').toLowerCase() === 'true';
+  const phase34Enabled = String(import.meta.env.VITE_ARTIST_UI_WORKSPACE_PHASE34 ?? 'true').toLowerCase() !== 'false';
+  const tableResetKey = `${appliedSearch}|${sort}|${favoriteOnly}|${mergeStatus}|${offset}`;
 
   return (
-    <RootTag {...rootProps} className={`${rootSpacingClass} artist-app-root ${shellMode ? "artist-shell-contained" : "artist-standalone"} ${embeddedInShell ? "artist-shell-embedded" : ""}`.trim()} data-shell-mode={shellMode ? "true" : "false"} data-shell-embedded={embeddedInShell ? "true" : "false"} data-theme={activeTheme}>
+    <RootTag {...rootProps} className={`${rootSpacingClass} artist-app-root ${shellMode ? "artist-shell-contained" : "artist-standalone"} ${embeddedInShell ? "artist-shell-embedded" : ""}`.trim()} data-shell-mode={shellMode ? "true" : "false"} data-shell-embedded={embeddedInShell ? "true" : "false"} data-scroll-debug={scrollDebug ? "true" : "false"} data-theme={activeTheme}>
       <div className="artist-page-surface">
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 artist-shell-meta-row">
           <div>
@@ -1306,18 +1379,10 @@ export default function ArtistPageContent({ shellContext = {} }) {
           <div className="artist-theme-chip">Theme: {activeTheme} · {themeSource}</div>
         </div>
 
-        <ToastContainer position="top-end" className="p-3" style={{ zIndex: 1060 }}>
-          <Toast bg={toast.bg} show={toast.show} onClose={() => setToast((t) => ({ ...t, show: false, action: null }))} delay={toast.action ? 7000 : 3500} autohide={!toast.action}>
-            <Toast.Body className="text-white d-flex align-items-center justify-content-between gap-3">
-              <span>{toast.message}</span>
-              {toast.action ? (
-                <Button size="sm" variant="light" onClick={() => { toast.action.onClick?.(); setToast((t) => ({ ...t, show: false, action: null })); }}>
-                  {toast.action.label}
-                </Button>
-              ) : null}
-            </Toast.Body>
-          </Toast>
-        </ToastContainer>
+        <AppNotification
+          notification={toast}
+          onClose={() => setToast((current) => ({ ...current, show: false, action: null }))}
+        />
 
         <div className="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap">
           <h1 className="h3 mb-0">Artiesten <Badge bg="secondary">{total}</Badge></h1>
@@ -1363,8 +1428,9 @@ export default function ArtistPageContent({ shellContext = {} }) {
         {pageError && <Alert variant="danger">{pageError}</Alert>}
         {lastDeleted ? <Alert variant="warning">Laatste verwijdering: <strong>{lastDeleted.name}</strong>. Gebruik de toast om ongedaan te maken.</Alert> : null}
 
-        <div className="border rounded artist-table-wrap" ref={artistTableRef}>
-          <Table responsive hover className="mb-0 align-middle">
+        <ArtistWorkspaceLayout embedded={embeddedInShell} phase34Enabled={phase34Enabled}>
+        <ArtistTableViewport ref={artistTableRef} resetKey={tableResetKey}>
+          <Table responsive={false} hover className="mb-0 align-middle artist-table-phase34">
             <thead className="table-light">
               <tr>
                 <th style={{ width: 72 }} className="text-center">Profiel</th>
@@ -1432,9 +1498,9 @@ export default function ArtistPageContent({ shellContext = {} }) {
               );})}
             </tbody>
           </Table>
-        </div>
+        </ArtistTableViewport>
 
-        <div className="d-flex justify-content-between align-items-center mt-3 gap-2 flex-wrap">
+        <div className="d-flex justify-content-between align-items-center mt-3 gap-2 flex-wrap artist-workspace-pagination">
           <div className="text-muted">Pagina {page} / {maxPage}</div>
           <div className="d-flex gap-2">
             <Button variant="outline-secondary" disabled={offset === 0 || loading} onClick={() => setOffset(Math.max(0, offset - limit))}>Vorige</Button>
@@ -1442,7 +1508,7 @@ export default function ArtistPageContent({ shellContext = {} }) {
           </div>
         </div>
 
-        <section ref={relationPanelRef} tabIndex={-1} className={`artist-relation-panel mt-3 ${relationArtist ? "artist-relation-panel-loaded" : ""}`} aria-label="Artiest relatie-inzicht">
+        <section ref={relationPanelRef} tabIndex={-1} className={`artist-relation-panel artist-workspace-detail-region mt-3 ${relationArtist ? "artist-relation-panel-loaded" : ""}`} data-scroll-container="artist-details" aria-label="Artiest relatie-inzicht">
           <div className="artist-relation-header">
             <div className="d-flex align-items-center gap-3">
               {relationArtist ? <DiscogsProfileImage image={relationPrimaryImage} size="small" /> : null}
@@ -1507,9 +1573,22 @@ export default function ArtistPageContent({ shellContext = {} }) {
           ) : (
             <>
             {showRelationPanelSection("relations") ? <BandMembershipPanel artist={relationArtist} /> : null}
+            <div className="d-flex justify-content-end mb-2">
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                className="artist-relation-details-toggle"
+                aria-expanded={showRelationDetails}
+                aria-controls="artist-relation-section-songs artist-relation-section-spellings artist-relation-section-charts artist-relation-section-merge-history"
+                onClick={() => setShowRelationDetails((current) => !current)}
+              >
+                <i className={`bi ${showRelationDetails ? "bi-chevron-up" : "bi-chevron-down"} me-1`} aria-hidden="true"></i>
+                {showRelationDetails ? "Verberg details" : "Toon details"}
+              </Button>
+            </div>
             <div className="artist-relation-grid">
-              <div className={`artist-relation-card ${showRelationPanelSection("relations") ? "" : "d-none"}`}>
-                <h3 className="h6">File details</h3>
+              {showRelationDetails ? (<>
+              <RelationDetailSection id="songs" title="Songs" className={showRelationPanelSection("relations") ? "" : "d-none"}>
                 {!relations?.fileDetails?.length ? <EmptyState>Geen gekoppelde file_details gevonden.</EmptyState> : (
                   <div className="artist-relation-table-scroll">
                     <Table size="sm" className="mb-0">
@@ -1527,10 +1606,9 @@ export default function ArtistPageContent({ shellContext = {} }) {
                     </Table>
                   </div>
                 )}
-              </div>
+              </RelationDetailSection>
 
-              <div className={`artist-relation-card ${showRelationPanelSection("relations") ? "" : "d-none"}`}>
-                <h3 className="h6">Artiesten spelling</h3>
+              <RelationDetailSection id="spellings" title="Alternatieve spellingen" className={showRelationPanelSection("relations") ? "" : "d-none"}>
                 {!relations?.spellings?.length ? <EmptyState>Geen alternatieve spellingen gevonden.</EmptyState> : (
                   <div className="artist-relation-table-scroll">
                     <Table size="sm" className="mb-0">
@@ -1543,10 +1621,9 @@ export default function ArtistPageContent({ shellContext = {} }) {
                     </Table>
                   </div>
                 )}
-              </div>
+              </RelationDetailSection>
 
-              <div className={`artist-relation-card ${showRelationPanelSection("relations") ? "" : "d-none"}`}>
-                <h3 className="h6">Hitlijsten</h3>
+              <RelationDetailSection id="charts" title="Hitlijsten" className={showRelationPanelSection("relations") ? "" : "d-none"}>
                 {!relations?.hitlijsten?.length ? <EmptyState>Geen hitlijsten gevonden.</EmptyState> : (
                   <div className="artist-relation-table-scroll">
                     <Table size="sm" className="mb-0">
@@ -1563,10 +1640,9 @@ export default function ArtistPageContent({ shellContext = {} }) {
                     </Table>
                   </div>
                 )}
-              </div>
+              </RelationDetailSection>
 
-              <div className={`artist-relation-card artist-merge-history-card ${showRelationPanelSection("relations") ? "" : "d-none"}`}>
-                <h3 className="h6">Mergehistorie</h3>
+              <RelationDetailSection id="merge-history" title="Mergehistorie" className={`artist-merge-history-card ${showRelationPanelSection("relations") ? "" : "d-none"}`}>
                 {!relations?.mergeHistory?.length ? <EmptyState>Geen mergehistorie gevonden voor deze artiest.</EmptyState> : (
                   <div className="artist-relation-table-scroll artist-merge-history-table-wrap">
                     <Table size="sm" className="mb-0 artist-merge-history-table">
@@ -1607,8 +1683,8 @@ export default function ArtistPageContent({ shellContext = {} }) {
                     </Table>
                   </div>
                 )}
-              </div>
-
+              </RelationDetailSection>
+              </>) : null}
               <div className={`artist-relation-card artist-discogs-card ${showRelationPanelSection("discogs") ? "" : "d-none"}`}>
                 <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
                   <div>
@@ -1657,46 +1733,15 @@ export default function ArtistPageContent({ shellContext = {} }) {
                 ) : null}
 
                 {relations?.discogsReferences?.length ? (
-                  <div className="artist-discogs-profile-images mb-2 small border rounded p-2">
-                    <div className="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2">
-                      <div>
-                        <div className="fw-semibold">Profielfoto uit Discogs images</div>
-                        <div className="text-muted">ART-012E-2 · Kies één Discogs-afbeelding als primaire profielfoto. De afbeelding blijft remote; er worden geen binaire bestanden in PostgreSQL opgeslagen.</div>
-                      </div>
-                      {relationPrimaryImage ? <Badge bg="success">Profielfoto gekozen</Badge> : <Badge bg="secondary">Geen profielfoto</Badge>}
-                    </div>
-                    {discogsPrimaryImageError ? <Alert variant="danger" className="py-2 small mb-2">{discogsPrimaryImageError}</Alert> : null}
-                    {discogsPrimaryImageResult ? <Alert variant="success" className="py-2 small mb-2">Primaire profielfoto bijgewerkt.</Alert> : null}
-                    {!relationDiscogsImages.length ? (
-                      <EmptyState>Geen Discogs-afbeeldingen gevonden. Koppel of ververs eerst een Discogs artist met images.</EmptyState>
-                    ) : (
-                      <div className="artist-discogs-image-grid" aria-label="Discogs afbeeldingen voor profielfoto">
-                        {relationDiscogsImages.map((image) => (
-                          <div key={image.image_id} className={`artist-discogs-image-card ${image.is_primary ? "artist-discogs-image-card-primary" : ""}`.trim()}>
-                            <a href={image.external_resource_url || image.external_image_url} target="_blank" rel="noreferrer" title="Open afbeelding">
-                              <img src={image.external_image_url} alt="Discogs artist afbeelding" loading="lazy" />
-                            </a>
-                            <div className="artist-discogs-image-meta">
-                              <div className="d-flex gap-1 flex-wrap align-items-center">
-                                {image.is_primary ? <Badge bg="success">Profielfoto</Badge> : null}
-                                {image.image_type ? <Badge bg="light" text="dark">{image.image_type}</Badge> : null}
-                                {image.width || image.height ? <span className="text-muted">{image.width || "?"}×{image.height || "?"}</span> : null}
-                              </div>
-                              <Button
-                                size="sm"
-                                variant={image.is_primary ? "success" : "outline-primary"}
-                                className="mt-2 w-100"
-                                disabled={image.is_primary || Boolean(discogsPrimaryImageLoading)}
-                                onClick={() => setPrimaryDiscogsImage(image)}
-                              >
-                                {discogsPrimaryImageLoading === String(image.image_id) ? "Opslaan..." : image.is_primary ? "Huidige profielfoto" : "Maak profielfoto"}
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <DiscogsProfileImageSection
+                    artistKey={relationArtist?.ar_artist_key}
+                    images={relationDiscogsImages}
+                    primaryImage={relationPrimaryImage}
+                    loadingImageId={discogsPrimaryImageLoading}
+                    error={discogsPrimaryImageError}
+                    success={Boolean(discogsPrimaryImageResult)}
+                    onSelectPrimary={setPrimaryDiscogsImage}
+                  />
                 ) : null}
                 {!relations?.discogsReferences?.length ? (
                   <Alert variant="info" className="py-2 small mb-2 artist-discogs-proposals-prerequisite">
@@ -2044,6 +2089,7 @@ export default function ArtistPageContent({ shellContext = {} }) {
             </>
           )}
         </section>
+        </ArtistWorkspaceLayout>
 
         <ArtistFormModal show={formOpen} mode={formMode} artist={active} onClose={() => setFormOpen(false)} onSave={saveArtist} />
         <ConfirmModal show={confirmOpen} title="Artiest naar prullenbak verplaatsen?" confirmLabel={deleting ? "Verplaatsen..." : "Naar prullenbak"} confirmVariant="danger" disabled={deleting} error={confirmError} onConfirm={deleteArtistSoft} onClose={() => !deleting && setConfirmOpen(false)}>

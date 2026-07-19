@@ -535,7 +535,7 @@ export default function ArtistFormModal({ show, mode, artist, onClose, onSave })
                     )}
                   </div>
                   <div className="artist-relation-card">
-                    <h4 className="h6">Artiesten spelling</h4>
+                    <h4 className="h6">Alternatieve spellingen</h4>
                     {!relations?.spellings?.length ? <EmptyState>Geen alternatieve spellingen gevonden.</EmptyState> : (
                       <div className="artist-relation-table-scroll">
                         <Table size="sm" className="mb-0">

@@ -946,3 +946,22 @@ Handmatige invoer blijft leidend. Discogs-resultaten worden voorstellen. Bestaan
 
 ### ART-013B-2-Fix-5
 Artist-aware matching toegevoegd. Bestaande artists worden ongeacht type gevonden; typeproblemen worden als datakwaliteitswaarschuwing zichtbaar en blokkeren acceptatie tot correctie.
+
+## 2026-07-14 — ART-UI-2 Fase 1/2
+
+Het detailgebied onder de artiestentabel is uit geneste verticale scrollcontainers gehaald. De primaire pagina/app-shell beheert de verticale scroll; brede detailtabellen mogen alleen horizontaal scrollen. Modals en offcanvas blijven zelfstandige scrolloverlays. Development-only scrollinventaris is beschikbaar via `VITE_ARTIST_UI_SCROLL_DEBUG=true`.
+
+### ART-013B-2-Fix-6
+Na correctie van artisttype, naam, spelling of musician-koppeling wordt de Discogs-bandledenqueue automatisch lokaal opnieuw geclassificeerd. Bewuste statussen `ignored` en `review_later` blijven behouden; `accepted` wordt niet opnieuw verwerkt.
+
+## 2026-07-14 — ART-UI-2 Fase 3/4 ontwerp
+
+Besloten is dat standalone de browserdocumentscroll gebruikt en Shellstarter embedded één expliciete app-workspacescroll. De artiestentabel is in beide contexten de enige toegestane secundaire verticale scroller. Tabelpositie blijft behouden bij rij- en detailacties en reset alleen bij zoeken, filteren, sorteren en pagineren. Nieuwe zoekcontext wist oude detailstate onmiddellijk en stale async responses mogen die state niet herstellen. Geen database- of API-wijziging.
+
+## ART-UI-2 Fase 3/4
+
+Geïmplementeerd op 2026-07-14. Geen database- of API-wijziging. Featureflag `VITE_ARTIST_UI_WORKSPACE_PHASE34=true`. De profielfotosectie opent standaard alleen wanneer nog geen primaire foto bestaat.
+
+## 2026-07-14 — ART-012B-Fix-2
+
+Discogs artist search is tolerant gemaakt voor diakritische tekens. De accentloze variant wordt alleen als fallback uitgevoerd wanneer de originele/NFC-query geen sterke match oplevert. Resultaten worden gededupliceerd en lokaal gerangschikt.
